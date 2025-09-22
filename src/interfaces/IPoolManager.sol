@@ -2,29 +2,13 @@
 pragma solidity ^0.8.20;
 
 interface IPoolManager {
-    event WithdrawPoints(
-        address indexed sender,
-        address indexed withdrawAddress,
-        uint256 amount
-    );
+    event WithdrawPoints(address indexed sender, address indexed withdrawAddress, uint256 amount);
 
     event DepositPoints(address indexed sender, uint256 amount);
 
-    event InitiatePoints(
-        uint256 sourceChainId,
-        uint256 destChainId,
-        address from,
-        address to,
-        uint256 amount
-    );
+    event InitiatePoints(uint256 sourceChainId, uint256 destChainId, address from, address to, uint256 amount);
 
-    event FinalizePoints(
-        uint256 sourceChainId,
-        uint256 destChainId,
-        address from,
-        address to,
-        uint256 amount
-    );
+    event FinalizePoints(uint256 sourceChainId, uint256 destChainId, address from, address to, uint256 amount);
 
     event SetMinTransferAmount(uint256 minTransferAmount);
 
@@ -48,11 +32,10 @@ interface IPoolManager {
 
     error TransferPointsFailed();
 
-    function BridgeInitiatePoints(
-        uint256 sourceChainId,
-        uint256 destChainId,
-        address to
-    ) external payable returns (bool);
+    function BridgeInitiatePoints(uint256 sourceChainId, uint256 destChainId, address to)
+        external
+        payable
+        returns (bool);
 
     function BridgeFinalizePoints(
         uint256 sourceChainId,

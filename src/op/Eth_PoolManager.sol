@@ -21,10 +21,7 @@ contract EthPoolManager is
     using SafeERC20 for IERC20;
 
     modifier onlyReLayer() {
-        require(
-            msg.sender == address(relayerAddress),
-            "TreasureManager:onlyReLayer only relayer call this function"
-        );
+        require(msg.sender == address(relayerAddress), "TreasureManager:onlyReLayer only relayer call this function");
         _;
     }
 
@@ -62,28 +59,24 @@ contract EthPoolManager is
         withdrawManager = _withdrawManager;
     }
 
-    function depositEthToBridge()
-        public
-        payable
-        whenNotPaused
-        nonReentrant
-        returns (bool)
-    {
+    function depositEthToBridge() public payable whenNotPaused nonReentrant returns (bool) {
         EthPoolBalance += msg.value;
         emit DepositEth(msg.sender, msg.value);
         return true;
     }
 
-    function withdrawEthFromBridge(
-        address payable withdrawAddress,
-        uint256 amount
-    ) public payable whenNotPaused onlyWithdrawManager returns (bool) {
+    function withdrawEthFromBridge(address payable withdrawAddress, uint256 amount)
+        public
+        payable
+        whenNotPaused
+        onlyWithdrawManager
+        returns (bool)
+    {
         require(
-            address(this).balance >= amount,
-            "PoolManager withdrawEthFromBridge: insufficient Eth balance in contract"
+            address(this).balance >= amount, "PoolManager withdrawEthFromBridge: insufficient Eth balance in contract"
         );
         EthPoolBalance -= amount;
-        (bool success, ) = withdrawAddress.call{value: amount}("");
+        (bool success,) = withdrawAddress.call{value: amount}("");
         if (!success) {
             return false;
         }
@@ -91,11 +84,13 @@ contract EthPoolManager is
         return true;
     }
 
-    function BridgeInitiateEth(
-        uint256 sourceChainId,
-        uint256 destChainId,
-        address to
-    ) external payable whenNotPaused nonReentrant returns (bool) {
+    function BridgeInitiateEth(uint256 sourceChainId, uint256 destChainId, address to)
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+        returns (bool)
+    {
         if (sourceChainId != block.chainid) {
             revert sourceChainIdError();
         }
@@ -117,14 +112,7 @@ contract EthPoolManager is
         uint256 fee = (msg.value * PerFee) / 1_000_000;
         uint256 amount = msg.value - fee;
 
-        messageManager.sendMessage(
-            block.chainid,
-            destChainId,
-            msg.sender,
-            to,
-            amount,
-            fee
-        );
+        messageManager.sendMessage(block.chainid, destChainId, msg.sender, to, amount, fee);
 
         emit InitiateEth(sourceChainId, destChainId, msg.sender, to, amount);
 
@@ -148,39 +136,26 @@ contract EthPoolManager is
             revert ChainIdIsNotSupported(sourceChainId);
         }
 
-        (bool _ret, ) = payable(to).call{value: amount}("");
+        (bool _ret,) = payable(to).call{value: amount}("");
         if (!_ret) {
             revert TransferEthFailed();
         }
 
         EthPoolBalance -= amount;
 
-        messageManager.claimMessage(
-            sourceChainId,
-            destChainId,
-            from,
-            to,
-            amount,
-            _fee,
-            _nonce
-        );
+        messageManager.claimMessage(sourceChainId, destChainId, from, to, amount, _fee, _nonce);
 
         emit FinalizeEth(sourceChainId, destChainId, address(this), to, amount);
 
         return true;
     }
 
-    function setMinTransferAmount(
-        uint256 _MinTransferAmount
-    ) external onlyReLayer {
+    function setMinTransferAmount(uint256 _MinTransferAmount) external onlyReLayer {
         MinTransferAmount = _MinTransferAmount;
         emit SetMinTransferAmount(_MinTransferAmount);
     }
 
-    function setValidChainId(
-        uint256 chainId,
-        bool isValid
-    ) external onlyReLayer {
+    function setValidChainId(uint256 chainId, bool isValid) external onlyReLayer {
         IsSupportedChainId[chainId] = isValid;
         emit SetValidChainId(chainId, isValid);
     }

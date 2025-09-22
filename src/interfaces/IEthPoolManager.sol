@@ -2,29 +2,13 @@
 pragma solidity ^0.8.20;
 
 interface IEthPoolManager {
-    event WithdrawEth(
-        address indexed sender,
-        address indexed withdrawAddress,
-        uint256 amount
-    );
+    event WithdrawEth(address indexed sender, address indexed withdrawAddress, uint256 amount);
 
     event DepositEth(address indexed sender, uint256 amount);
 
-    event InitiateEth(
-        uint256 sourceChainId,
-        uint256 destChainId,
-        address from,
-        address to,
-        uint256 amount
-    );
+    event InitiateEth(uint256 sourceChainId, uint256 destChainId, address from, address to, uint256 amount);
 
-    event FinalizeEth(
-        uint256 sourceChainId,
-        uint256 destChainId,
-        address from,
-        address to,
-        uint256 amount
-    );
+    event FinalizeEth(uint256 sourceChainId, uint256 destChainId, address from, address to, uint256 amount);
 
     event SetMinTransferAmount(uint256 minTransferAmount);
 
@@ -48,11 +32,10 @@ interface IEthPoolManager {
 
     error TransferEthFailed();
 
-    function BridgeInitiateEth(
-        uint256 sourceChainId,
-        uint256 destChainId,
-        address to
-    ) external payable returns (bool);
+    function BridgeInitiateEth(uint256 sourceChainId, uint256 destChainId, address to)
+        external
+        payable
+        returns (bool);
 
     function BridgeFinalizeEth(
         uint256 sourceChainId,

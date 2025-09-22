@@ -21,10 +21,7 @@ contract PointsPoolManager is
     using SafeERC20 for IERC20;
 
     modifier onlyReLayer() {
-        require(
-            msg.sender == address(relayerAddress),
-            "TreasureManager:onlyReLayer only relayer call this function"
-        );
+        require(msg.sender == address(relayerAddress), "TreasureManager:onlyReLayer only relayer call this function");
         _;
     }
 
@@ -62,28 +59,25 @@ contract PointsPoolManager is
         withdrawManager = _withdrawManager;
     }
 
-    function depositPointsToBridge()
-        public
-        payable
-        whenNotPaused
-        nonReentrant
-        returns (bool)
-    {
+    function depositPointsToBridge() public payable whenNotPaused nonReentrant returns (bool) {
         PointsPoolBalance += msg.value;
         emit DepositPoints(msg.sender, msg.value);
         return true;
     }
 
-    function withdrawPointsFromBridge(
-        address payable withdrawAddress,
-        uint256 amount
-    ) public payable whenNotPaused onlyWithdrawManager returns (bool) {
+    function withdrawPointsFromBridge(address payable withdrawAddress, uint256 amount)
+        public
+        payable
+        whenNotPaused
+        onlyWithdrawManager
+        returns (bool)
+    {
         require(
             address(this).balance >= amount,
             "PoolManager withdrawPointsFromBridge: insufficient Points balance in contract"
         );
         PointsPoolBalance -= amount;
-        (bool success, ) = withdrawAddress.call{value: amount}("");
+        (bool success,) = withdrawAddress.call{value: amount}("");
         if (!success) {
             return false;
         }
@@ -91,11 +85,13 @@ contract PointsPoolManager is
         return true;
     }
 
-    function BridgeInitiatePoints(
-        uint256 sourceChainId,
-        uint256 destChainId,
-        address to
-    ) external payable whenNotPaused nonReentrant returns (bool) {
+    function BridgeInitiatePoints(uint256 sourceChainId, uint256 destChainId, address to)
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+        returns (bool)
+    {
         if (sourceChainId != block.chainid) {
             revert sourceChainIdError();
         }
@@ -117,14 +113,7 @@ contract PointsPoolManager is
         uint256 fee = (msg.value * PerFee) / 1_000_000;
         uint256 amount = msg.value - fee;
 
-        messageManager.sendMessage(
-            block.chainid,
-            destChainId,
-            msg.sender,
-            to,
-            amount,
-            fee
-        );
+        messageManager.sendMessage(block.chainid, destChainId, msg.sender, to, amount, fee);
 
         emit InitiatePoints(sourceChainId, destChainId, msg.sender, to, amount);
 
@@ -148,45 +137,26 @@ contract PointsPoolManager is
             revert ChainIdIsNotSupported(sourceChainId);
         }
 
-        (bool _ret, ) = payable(to).call{value: amount}("");
+        (bool _ret,) = payable(to).call{value: amount}("");
         if (!_ret) {
             revert TransferPointsFailed();
         }
 
         PointsPoolBalance -= amount;
 
-        messageManager.claimMessage(
-            sourceChainId,
-            destChainId,
-            from,
-            to,
-            amount,
-            _fee,
-            _nonce
-        );
+        messageManager.claimMessage(sourceChainId, destChainId, from, to, amount, _fee, _nonce);
 
-        emit FinalizePoints(
-            sourceChainId,
-            destChainId,
-            address(this),
-            to,
-            amount
-        );
+        emit FinalizePoints(sourceChainId, destChainId, address(this), to, amount);
 
         return true;
     }
 
-    function setMinTransferAmount(
-        uint256 _MinTransferAmount
-    ) external onlyReLayer {
+    function setMinTransferAmount(uint256 _MinTransferAmount) external onlyReLayer {
         MinTransferAmount = _MinTransferAmount;
         emit SetMinTransferAmount(_MinTransferAmount);
     }
 
-    function setValidChainId(
-        uint256 chainId,
-        bool isValid
-    ) external onlyReLayer {
+    function setValidChainId(uint256 chainId, bool isValid) external onlyReLayer {
         IsSupportedChainId[chainId] = isValid;
         emit SetValidChainId(chainId, isValid);
     }

@@ -13,12 +13,7 @@ interface IMessageManager {
         bytes32 indexed _messageHash
     );
 
-    event MessageClaimed(
-        uint256 sourceChainId,
-        uint256 destChainId,
-        bytes32 indexed _messageHash,
-        uint256 _nonce
-    );
+    event MessageClaimed(uint256 sourceChainId, uint256 destChainId, bytes32 indexed _messageHash, uint256 _nonce);
 
     error ZeroAddressNotAllowed();
     error MessageAlreadySent(bytes32 messageHash);

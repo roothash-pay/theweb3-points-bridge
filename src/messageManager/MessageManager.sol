@@ -7,20 +7,12 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./MessageManagerStorage.sol";
 
-contract MessageManager is
-    Initializable,
-    ReentrancyGuardUpgradeable,
-    OwnableUpgradeable,
-    MessageManagerStorage
-{
+contract MessageManager is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable, MessageManagerStorage {
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(
-        address initialOwner,
-        address _poolManagerAddress
-    ) public initializer {
+    function initialize(address initialOwner, address _poolManagerAddress) public initializer {
         poolManagerAddress = _poolManagerAddress;
         nextMessageNumber = 1;
         __ReentrancyGuard_init();
@@ -28,10 +20,7 @@ contract MessageManager is
     }
 
     modifier onlyTokenBridge() {
-        require(
-            msg.sender == poolManagerAddress,
-            "MessageManager: only token bridge can do this operate"
-        );
+        require(msg.sender == poolManagerAddress, "MessageManager: only token bridge can do this operate");
         _;
     }
 
@@ -47,29 +36,10 @@ contract MessageManager is
             revert ZeroAddressNotAllowed();
         }
         uint256 messageNumber = nextMessageNumber;
-        bytes32 messageHash = keccak256(
-            abi.encode(
-                sourceChainId,
-                destChainId,
-                _from,
-                _to,
-                _fee,
-                _value,
-                messageNumber
-            )
-        );
+        bytes32 messageHash = keccak256(abi.encode(sourceChainId, destChainId, _from, _to, _fee, _value, messageNumber));
         nextMessageNumber++;
         sentMessageStatus[messageHash] = true;
-        emit MessageSent(
-            sourceChainId,
-            destChainId,
-            _from,
-            _to,
-            _fee,
-            _value,
-            messageNumber,
-            messageHash
-        );
+        emit MessageSent(sourceChainId, destChainId, _from, _to, _fee, _value, messageNumber, messageHash);
     }
 
     function claimMessage(
@@ -81,17 +51,7 @@ contract MessageManager is
         uint256 _fee,
         uint256 _nonce
     ) external onlyTokenBridge nonReentrant {
-        bytes32 messageHash = keccak256(
-            abi.encode(
-                sourceChainId,
-                destChainId,
-                _from,
-                _to,
-                _fee,
-                _value,
-                _nonce
-            )
-        );
+        bytes32 messageHash = keccak256(abi.encode(sourceChainId, destChainId, _from, _to, _fee, _value, _nonce));
         require(!cliamMessageStatus[messageHash], "Message not found!");
         cliamMessageStatus[messageHash] = true;
         emit MessageClaimed(sourceChainId, destChainId, messageHash, _nonce);
