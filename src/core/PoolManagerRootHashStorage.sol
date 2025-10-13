@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "../interfaces/IMessageManager.sol";
 import "../interfaces/IPoolManager.sol";
 
-abstract contract PoolManagerStorage is IPoolManager {
+abstract contract PoolManagerRootHashStorage is IPoolManager {
     // Native Token Address
     address public constant NativeTokenAddress =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
@@ -33,5 +33,7 @@ abstract contract PoolManagerStorage is IPoolManager {
     mapping(address => uint256) public MinStakeAmount;
     mapping(address => uint256) public BridgeNativeTokenTimeStamp;
     mapping(address => uint256) public BridgeERC20TokenTimeStamp;
+
     mapping(address => uint256) public PerFee;
+    mapping(address => uint256) public TokenUSDTExchangeRate; // token => how many token for 1 USDT
 }

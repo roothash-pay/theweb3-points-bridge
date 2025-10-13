@@ -119,8 +119,11 @@ interface IPoolManager {
         bool isSupport,
         uint256 chainId
     );
+
+    event SetTokenUSDTExchangeRate(uint256 rate, address tokenAddress);
+
     event SetValidChainId(uint256 chainId, bool isValid);
-    event SetPerFee(uint256 chainId);
+    event SetPerFee(uint256 chainId, address tokenAddress);
     event SetMinTransferAmount(uint256 _MinTransferAmount);
 
     error NoReward();
@@ -214,7 +217,7 @@ interface IPoolManager {
 
     function setSupportERC20Token(address ERC20Address, bool isValid) external;
 
-    function setPerFee(uint256 _PerFee) external;
+    function setPerFee(uint256 _PerFee, address _tokenAddress) external;
 
     function pause() external;
 

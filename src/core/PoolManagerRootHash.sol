@@ -9,14 +9,15 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IPoolManager.sol";
-import "./PoolManagerStorage.sol";
+import "../interfaces/IWrappedERC20.sol";
+import "./PoolManagerRootHashStorage.sol";
 
-contract PoolManager is
+contract PoolManagerRootHash is
     Initializable,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
     PausableUpgradeable,
-    PoolManagerStorage
+    PoolManagerRootHashStorage
 {
     using SafeERC20 for IERC20;
 
@@ -169,6 +170,7 @@ contract PoolManager is
 
         FundingPoolBalance[NativeTokenAddress] += msg.value;
 
+        //  Calculate fee
         uint256 fee = (msg.value * PerFee[NativeTokenAddress]) / 1_000_000;
         uint256 amount = msg.value - fee;
 
@@ -198,6 +200,81 @@ contract PoolManager is
     }
 
     // User initiate erc20 token transfer to other chain
+    function BridgeInitiateWrappedERC20(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address to,
+        address sourceTokenAddress,
+        address destTokenAddress,
+        uint256 value
+    ) external whenNotPaused nonReentrant returns (bool) {
+        if (sourceChainId != block.chainid) {
+            revert sourceChainIdError();
+        }
+
+        // if (block.timestamp - BridgeERC20TokenTimeStamp[msg.sender] < 1 days) {
+        //     revert TimeIntervalNotReached();
+        // }
+
+        if (!IsSupportChainId(destChainId)) {
+            revert ChainIdIsNotSupported(destChainId);
+        }
+
+        if (!IsSupportToken[sourceTokenAddress]) {
+            revert TokenIsNotSupported(sourceTokenAddress);
+        }
+
+        if (value < MinTransferAmount) {
+            revert LessThanMinTransferAmount(MinTransferAmount, value);
+        }
+
+        if (value > MaxERC20TransferAmount) {
+            revert MoreThanMaxTransferAmount(MinTransferAmount, value);
+        }
+
+        uint256 balance = IERC20(sourceTokenAddress).balanceOf(address(this));
+        require(balance >= value, "PoolManager: insufficient token balance");
+
+        IERC20(sourceTokenAddress).safeTransferFrom(
+            msg.sender,
+            address(this),
+            value
+        );
+
+        // Burn the wrapped token
+        IWrappedERC20(sourceTokenAddress).burn(value);
+
+        // Calculate fee
+        uint256 fee = (value * PerFee[sourceTokenAddress]) / 1_000_000;
+
+        uint256 amount = value - fee;
+        FeePoolValue[destTokenAddress] += fee;
+
+        messageManager.sendMessage(
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            destTokenAddress,
+            msg.sender,
+            to,
+            amount,
+            fee
+        );
+
+        emit InitiateERC20(
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            destTokenAddress,
+            msg.sender,
+            to,
+            amount
+        );
+
+        return true;
+    }
+
+    // User initiate erc20 token transfer to other chain for USDT
     function BridgeInitiateERC20(
         uint256 sourceChainId,
         uint256 destChainId,
@@ -245,11 +322,14 @@ contract PoolManager is
         uint256 amount = BalanceAfter - BalanceBefore;
         FundingPoolBalance[sourceTokenAddress] += value;
 
-        // Calculate fee
-        uint256 fee = (amount * PerFee[sourceTokenAddress]) / 1_000_000;
+        // Convert to USDT amount
+        uint256 usdtAmount = (amount *
+            TokenUSDTExchangeRate[sourceTokenAddress]) / (1e6 * 1e12); // assuming token has 18 decimals
 
-        amount -= fee;
-        FeePoolValue[sourceTokenAddress] += fee;
+        // Calculate fee
+        uint256 fee = (usdtAmount * PerFee[sourceTokenAddress]) / 1_000_000;
+        usdtAmount -= fee;
+        FeePoolValue[destTokenAddress] += fee;
 
         messageManager.sendMessage(
             sourceChainId,
@@ -258,7 +338,7 @@ contract PoolManager is
             destTokenAddress,
             msg.sender,
             to,
-            amount,
+            usdtAmount,
             fee
         );
 
@@ -269,7 +349,7 @@ contract PoolManager is
             destTokenAddress,
             msg.sender,
             to,
-            amount
+            usdtAmount
         );
 
         return true;
@@ -326,7 +406,7 @@ contract PoolManager is
         return true;
     }
 
-    function BridgeFinalizeERC20(
+    function BridgeFinalizeWrappedERC20(
         uint256 sourceChainId,
         uint256 destChainId,
         address from,
@@ -351,12 +431,69 @@ contract PoolManager is
             revert TokenIsNotSupported(destTokenAddress);
         }
 
-        // send erc20 token to user
+        // mint erc20 token to user
+        IWrappedERC20(destTokenAddress).mint(to, amount);
+
+        messageManager.claimMessage(
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            destTokenAddress,
+            from,
+            to,
+            amount,
+            _fee,
+            _nonce
+        );
+
+        emit FinalizeERC20(
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            destTokenAddress,
+            address(this),
+            to,
+            amount
+        );
+
+        return true;
+    }
+
+    // finalize USDT from other chain for erc20
+    function BridgeFinalizeERC20(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address from,
+        address to,
+        address sourceTokenAddress,
+        address destTokenAddress,
+        uint256 _amount,
+        uint256 _fee,
+        uint256 _nonce
+    ) external whenNotPaused onlyReLayer returns (bool) {
+        // check dest chain id
+        if (destChainId != block.chainid) {
+            revert sourceChainIdError();
+        }
+
+        if (!IsSupportChainId(sourceChainId)) {
+            revert ChainIdIsNotSupported(sourceChainId);
+        }
+
+        // check dest token is supported
+        if (!IsSupportToken[destTokenAddress]) {
+            revert TokenIsNotSupported(destTokenAddress);
+        }
+
+        // Calculate the amount of dest token to send to user
+        uint256 amount = (_amount * 1e12 * 1e6) /
+            TokenUSDTExchangeRate[destTokenAddress]; // assuming token has 18 decimals
+
+        // transfer erc20 token to user
         require(
             IERC20(destTokenAddress).balanceOf(address(this)) >= amount,
             "PoolManager: insufficient token balance for transfer"
         );
-
         IERC20(destTokenAddress).safeTransfer(to, amount);
 
         FundingPoolBalance[destTokenAddress] -= amount;
@@ -426,6 +563,15 @@ contract PoolManager is
         require(_PerFee < 1_000_000);
         PerFee[_tokenAddress] = _PerFee;
         emit SetPerFee(_PerFee, _tokenAddress);
+    }
+
+    function setTokenUSDTExchangeRate(
+        uint256 _rate,
+        address _tokenAddress
+    ) external onlyReLayer {
+        require(_rate > 0);
+        TokenUSDTExchangeRate[_tokenAddress] = _rate;
+        emit SetTokenUSDTExchangeRate(_rate, _tokenAddress);
     }
 
     function pause() external onlyOwner {
