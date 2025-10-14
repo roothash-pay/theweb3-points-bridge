@@ -505,7 +505,7 @@ contract PoolManagerRootHash is
             destTokenAddress,
             from,
             to,
-            amount,
+            _amount,
             _fee,
             _nonce
         );
