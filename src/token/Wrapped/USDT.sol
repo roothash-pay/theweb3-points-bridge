@@ -52,6 +52,10 @@ contract USDTToken is
         bridgeAddress = _bridgeAddress;
     }
 
+    function decimals() public pure override returns (uint8) {
+        return 6;
+    }
+
     // Optional: owner rescue function for accidentally sent ERC20s
     function recoverERC20(
         address token,

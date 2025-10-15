@@ -6,46 +6,64 @@ import {Script, console} from "forge-std/Script.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import { EmptyContract } from "./utils/EmptyContract.sol";
-import { MessageManager } from "../src/core/MessageManager.sol";
-import { PoolManager } from "../src/core/PoolManager.sol";
+import {EmptyContract} from "./utils/EmptyContract.sol";
+import {MessageManager} from "../src/core/MessageManager.sol";
+import {PoolManagerRootHash} from "../src/core/PoolManagerRootHash.sol";
 
-contract DeployerCpChainBridge is Script {
+contract DeployerRootHashChainBridge is Script {
     EmptyContract public emptyContract;
+
     ProxyAdmin public messageManagerProxyAdmin;
-    ProxyAdmin public  poolManagerProxyAdmin;
+    ProxyAdmin public poolManagerProxyAdmin;
+
     MessageManager public messageManager;
     MessageManager public messageManagerImplementation;
 
-    PoolManager public poolManager;
-    PoolManager public poolManagerImplementation;
+    PoolManagerRootHash public poolManager;
+    PoolManagerRootHash public poolManagerImplementation;
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address relayerAddress =  vm.envAddress("RELAYER_ADDRESS");
-        address cpChainMultiSign =  vm.envAddress("MULTI_SIGNER");
+        address relayerAddress = vm.envAddress("RELAYER_ADDRESS");
+        address rootHashChainMultiSign = vm.envAddress("MULTI_SIGNER");
+
+        console.log("RELAYER_ADDRESS: ", relayerAddress);
+        console.log("MULTI_SIGNER: ", rootHashChainMultiSign);
 
         address deployerAddress = vm.addr(deployerPrivateKey);
+        console.log("Depolyer Address: ", deployerAddress);
         vm.startBroadcast(deployerPrivateKey);
 
         emptyContract = new EmptyContract();
 
-        TransparentUpgradeableProxy proxyMessageManager = new TransparentUpgradeableProxy(address(emptyContract), cpChainMultiSign, "");
+        TransparentUpgradeableProxy proxyMessageManager = new TransparentUpgradeableProxy(
+                address(emptyContract),
+                rootHashChainMultiSign,
+                ""
+            );
         messageManager = MessageManager(address(proxyMessageManager));
         messageManagerImplementation = new MessageManager();
-        messageManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyMessageManager)));
+        messageManagerProxyAdmin = ProxyAdmin(
+            getProxyAdminAddress(address(proxyMessageManager))
+        );
 
-        TransparentUpgradeableProxy proxyPoolManager = new TransparentUpgradeableProxy(address(emptyContract), cpChainMultiSign, "");
-        poolManager = PoolManager(payable(address(proxyPoolManager)));
-        poolManagerImplementation = new PoolManager();
-        poolManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyPoolManager)));
+        TransparentUpgradeableProxy proxyPoolManager = new TransparentUpgradeableProxy(
+                address(emptyContract),
+                rootHashChainMultiSign,
+                ""
+            );
+        poolManager = PoolManagerRootHash(payable(address(proxyPoolManager)));
+        poolManagerImplementation = new PoolManagerRootHash();
+        poolManagerProxyAdmin = ProxyAdmin(
+            getProxyAdminAddress(address(proxyPoolManager))
+        );
 
         messageManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(messageManager)),
             address(messageManagerImplementation),
             abi.encodeWithSelector(
                 MessageManager.initialize.selector,
-                deployerAddress,
+                relayerAddress,
                 poolManager
             )
         );
@@ -54,15 +72,18 @@ contract DeployerCpChainBridge is Script {
             ITransparentUpgradeableProxy(address(poolManager)),
             address(poolManagerImplementation),
             abi.encodeWithSelector(
-                PoolManager.initialize.selector,
-                deployerAddress,
+                PoolManagerRootHash.initialize.selector,
+                relayerAddress,
                 messageManager,
                 relayerAddress,
-                deployerAddress
+                relayerAddress
             )
         );
 
-        console.log("deploy proxyMessageManager:", address(proxyMessageManager));
+        console.log(
+            "deploy proxyMessageManager:",
+            address(proxyMessageManager)
+        );
         console.log("deploy proxyPoolManager:", address(proxyPoolManager));
         // string memory path = "deployed_addresses.json";
         // string memory data = string(abi.encodePacked(
@@ -73,7 +94,9 @@ contract DeployerCpChainBridge is Script {
         // vm.stopBroadcast();
     }
 
-    function getProxyAdminAddress(address proxy) internal view returns (address) {
+    function getProxyAdminAddress(
+        address proxy
+    ) internal view returns (address) {
         address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
         Vm vm = Vm(CHEATCODE_ADDRESS);
 
