@@ -58,6 +58,8 @@ contract PoolManager is
         stakingMessageNumber = 1;
 
         __Ownable_init(initialOwner);
+        _PoolManagerStorageInitialize();
+        __Pausable_init();
 
         messageManager = IMessageManager(_messageManager);
         relayerAddress = _relayerAddress;
@@ -227,7 +229,7 @@ contract PoolManager is
         }
 
         if (value > MaxERC20TransferAmount) {
-            revert MoreThanMaxTransferAmount(MinTransferAmount, value);
+            revert MoreThanMaxTransferAmount(MaxERC20TransferAmount, value);
         }
 
         uint256 BalanceBefore = IERC20(sourceTokenAddress).balanceOf(
@@ -394,10 +396,15 @@ contract PoolManager is
     }
 
     function setMaxTransferAmount(
-        uint256 _MaxTransferAmount
+        uint256 _MaxTransferAmount,
+        bool isERC20
     ) external onlyReLayer {
-        MinTransferAmount = _MaxTransferAmount;
-        emit SetMinTransferAmount(_MaxTransferAmount);
+        if (isERC20) {
+            MaxERC20TransferAmount = _MaxTransferAmount;
+        } else {
+            MaxPointsTransferAmount = _MaxTransferAmount;
+        }
+        emit SetMaxTransferAmount(_MaxTransferAmount, isERC20);
     }
 
     function setValidChainId(

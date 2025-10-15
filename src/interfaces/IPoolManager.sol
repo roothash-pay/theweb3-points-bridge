@@ -125,6 +125,7 @@ interface IPoolManager {
     event SetValidChainId(uint256 chainId, bool isValid);
     event SetPerFee(uint256 chainId, address tokenAddress);
     event SetMinTransferAmount(uint256 _MinTransferAmount);
+    event SetMaxTransferAmount(uint256 _MaxTransferAmount, bool isERC20);
 
     error NoReward();
 

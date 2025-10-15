@@ -5,6 +5,11 @@ import "../interfaces/IMessageManager.sol";
 import "../interfaces/IPoolManager.sol";
 
 abstract contract PoolManagerStorage is IPoolManager {
+    function _PoolManagerStorageInitialize() internal {
+        MaxPointsTransferAmount = 100 * 10e18;
+        MaxERC20TransferAmount = 100 * 10e18;
+    }
+
     // Native Token Address
     address public constant NativeTokenAddress =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
@@ -12,8 +17,8 @@ abstract contract PoolManagerStorage is IPoolManager {
     uint32 public periodTime;
 
     uint256 public MinTransferAmount;
-    uint256 public MaxPointsTransferAmount = 100;
-    uint256 public MaxERC20TransferAmount = 100 * 10e6;
+    uint256 public MaxPointsTransferAmount;
+    uint256 public MaxERC20TransferAmount;
 
     // uint256 public PerFee; // 0.1%
     uint256 public stakingMessageNumber;

@@ -59,6 +59,8 @@ contract PoolManagerRootHash is
         stakingMessageNumber = 1;
 
         __Ownable_init(initialOwner);
+        __Pausable_init();
+        _PoolManagerRootHashStorageInit();
 
         messageManager = IMessageManager(_messageManager);
         relayerAddress = _relayerAddress;
@@ -229,11 +231,8 @@ contract PoolManagerRootHash is
         }
 
         if (value > MaxERC20TransferAmount) {
-            revert MoreThanMaxTransferAmount(MinTransferAmount, value);
+            revert MoreThanMaxTransferAmount(MaxERC20TransferAmount, value);
         }
-
-        uint256 balance = IERC20(sourceTokenAddress).balanceOf(address(this));
-        require(balance >= value, "PoolManager: insufficient token balance");
 
         IERC20(sourceTokenAddress).safeTransferFrom(
             msg.sender,
@@ -304,7 +303,7 @@ contract PoolManagerRootHash is
         }
 
         if (value > MaxERC20TransferAmount) {
-            revert MoreThanMaxTransferAmount(MinTransferAmount, value);
+            revert MoreThanMaxTransferAmount(MaxERC20TransferAmount, value);
         }
 
         uint256 BalanceBefore = IERC20(sourceTokenAddress).balanceOf(
@@ -531,10 +530,15 @@ contract PoolManagerRootHash is
     }
 
     function setMaxTransferAmount(
-        uint256 _MaxTransferAmount
+        uint256 _MaxTransferAmount,
+        bool isERC20
     ) external onlyReLayer {
-        MinTransferAmount = _MaxTransferAmount;
-        emit SetMinTransferAmount(_MaxTransferAmount);
+        if (isERC20) {
+            MaxERC20TransferAmount = _MaxTransferAmount;
+        } else {
+            MaxPointsTransferAmount = _MaxTransferAmount;
+        }
+        emit SetMaxTransferAmount(_MaxTransferAmount, isERC20);
     }
 
     function setValidChainId(
