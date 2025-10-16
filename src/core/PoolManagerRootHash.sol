@@ -138,6 +138,26 @@ contract PoolManagerRootHash is
         return true;
     }
 
+    // Withdraw Fee Value token from bridge
+    function withdrawFeeValue(
+        address tokenAddress,
+        address withdrawAddress,
+        uint256 amount
+    ) public whenNotPaused onlyWithdrawManager returns (bool) {
+        require(
+            FeePoolValue[tokenAddress] >= amount,
+            "PoolManager withdrawNativeTokenFromBridge: Insufficient token balance in contract"
+        );
+        FeePoolValue[tokenAddress] -= amount;
+        if (tokenAddress != NativeTokenAddress) {
+            IERC20(tokenAddress).safeTransfer(withdrawAddress, amount);
+        } else {
+            (bool success, ) = payable(withdrawAddress).call{value: amount}("");
+            require(success == true, "native token withdraw failed");
+        }
+        return true;
+    }
+
     // User initiate native token transfer to other chain
     function BridgeInitiateNativeToken(
         uint256 sourceChainId,
