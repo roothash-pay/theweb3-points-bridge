@@ -22,34 +22,16 @@ interface IPoolManager {
 
     struct KeyValuePair {
         address key;
-        uint value;
+        uint256 value;
     }
 
-    event DepositToken(
-        address indexed tokenAddress,
-        address indexed sender,
-        uint256 amount
-    );
+    event DepositToken(address indexed tokenAddress, address indexed sender, uint256 amount);
 
-    event WithdrawToken(
-        address indexed tokenAddress,
-        address sender,
-        address withdrawAddress,
-        uint256 amount
-    );
+    event WithdrawToken(address indexed tokenAddress, address sender, address withdrawAddress, uint256 amount);
 
-    event StarkingERC20Event(
-        address indexed user,
-        address indexed token,
-        uint256 chainId,
-        uint256 amount
-    );
+    event StarkingERC20Event(address indexed user, address indexed token, uint256 chainId, uint256 amount);
 
-    event StakingNativeTokenEvent(
-        address indexed user,
-        uint256 chainId,
-        uint256 amount
-    );
+    event StakingNativeTokenEvent(address indexed user, uint256 chainId, uint256 amount);
 
     event InitiateNativeToken(
         uint256 sourceChainId,
@@ -90,12 +72,7 @@ interface IPoolManager {
     );
 
     event ClaimReward(
-        address _user,
-        uint256 startPoolId,
-        uint256 EndPoolId,
-        uint256 chainId,
-        address _token,
-        uint Reward
+        address _user, uint256 startPoolId, uint256 EndPoolId, uint256 chainId, address _token, uint256 Reward
     );
 
     event Withdraw(
@@ -104,21 +81,13 @@ interface IPoolManager {
         uint256 EndPoolId,
         uint256 chainId,
         address _token,
-        uint Amount,
-        uint Reward
+        uint256 Amount,
+        uint256 Reward
     );
 
-    event CompletePoolEvent(
-        address indexed token,
-        uint256 poolIndex,
-        uint256 chainId
-    );
+    event CompletePoolEvent(address indexed token, uint256 poolIndex, uint256 chainId);
 
-    event SetSupportTokenEvent(
-        address indexed token,
-        bool isSupport,
-        uint256 chainId
-    );
+    event SetSupportTokenEvent(address indexed token, bool isSupport, uint256 chainId);
 
     event SetTokenUSDTExchangeRate(uint256 rate, address tokenAddress);
 
@@ -248,11 +217,7 @@ interface IPoolManager {
         uint256 _nonce
     ) external returns (bool);
 
-    function QuickSendAssertToUser(
-        address _token,
-        address to,
-        uint256 _amount
-    ) external;
+    function QuickSendAssertToUser(address _token, address to, uint256 _amount) external;
 
     function setMinTransferAmount(uint256 _MinTransferAmount) external;
 

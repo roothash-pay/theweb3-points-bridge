@@ -11,8 +11,7 @@ abstract contract PoolManagerStorage is IPoolManager {
     }
 
     // Native Token Address
-    address public constant NativeTokenAddress =
-        address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address public constant NativeTokenAddress = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     uint32 public periodTime;
 

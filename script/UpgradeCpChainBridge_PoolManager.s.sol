@@ -7,11 +7,10 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/utils/StorageSlot.sol";
 
-import { MessageManager } from "../src/core/MessageManager.sol";
-import { PoolManager } from "../src/core/PoolManager.sol";
+import {MessageManager} from "../src/core/MessageManager.sol";
+import {PoolManager} from "../src/core/PoolManager.sol";
 
 contract UpgraderCpChainBridge is Script {
-
     address public POOL_MANAGER_PROXY = vm.envAddress("POOL_MANAGER_PROXY");
 
     function run() public {
@@ -21,7 +20,6 @@ contract UpgraderCpChainBridge is Script {
         console.log("Deployer address:", deployerAddress);
         console.log("Pool Manager Proxy:", POOL_MANAGER_PROXY);
 
-
         address proxyAdminAddress = getProxyAdminAddress(POOL_MANAGER_PROXY);
         console.log("Calculated Pool Manager Proxy Admin:", proxyAdminAddress);
 
@@ -29,16 +27,12 @@ contract UpgraderCpChainBridge is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-
         PoolManager newPoolManagerImplementation = new PoolManager();
 
         console.log("New PoolManager implementation:", address(newPoolManagerImplementation));
 
-
         poolManagerProxyAdmin.upgradeAndCall(
-            ITransparentUpgradeableProxy(POOL_MANAGER_PROXY),
-            address(newPoolManagerImplementation),
-            ""
+            ITransparentUpgradeableProxy(POOL_MANAGER_PROXY), address(newPoolManagerImplementation), ""
         );
 
         console.log("Upgrade completed successfully!");

@@ -8,11 +8,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /// @title USDC Token (ERC20) for RootHashChain
 /// @notice Simple ERC20 with owner-controlled minting and token burning
-contract USDCToken is
-    ERC20Upgradeable,
-    ERC20BurnableUpgradeable,
-    OwnableUpgradeable
-{
+contract USDCToken is ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable {
     address public bridgeAddress;
 
     constructor() {
@@ -20,10 +16,7 @@ contract USDCToken is
     }
 
     modifier onlyBridge() {
-        require(
-            msg.sender == bridgeAddress || msg.sender == owner(),
-            "Not called from bridge address or owner"
-        );
+        require(msg.sender == bridgeAddress || msg.sender == owner(), "Not called from bridge address or owner");
         _;
     }
 
@@ -57,15 +50,9 @@ contract USDCToken is
     }
 
     // Optional: owner rescue function for accidentally sent ERC20s
-    function recoverERC20(
-        address token,
-        uint256 amount,
-        address to
-    ) external onlyOwner {
+    function recoverERC20(address token, uint256 amount, address to) external onlyOwner {
         require(token != address(this), "Cannot recover native USDC tokens");
-        (bool success, ) = token.call(
-            abi.encodeWithSignature("transfer(address,uint256)", to, amount)
-        );
+        (bool success,) = token.call(abi.encodeWithSignature("transfer(address,uint256)", to, amount));
         require(success, "ERC20 recover failed");
     }
 }

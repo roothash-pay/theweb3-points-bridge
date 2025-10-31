@@ -9,11 +9,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 /// @title TW Token (ERC20) for RootHashChain
 /// @notice Simple ERC20 with owner-controlled minting and token burning
 /// @dev Initial supply minted to 0x118967ae62d4cEa0e208681B69C3594F0dB717bd
-contract TWTestToken is
-    ERC20Upgradeable,
-    ERC20BurnableUpgradeable,
-    OwnableUpgradeable
-{
+contract TWTestToken is ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable {
     // constructor() {
     //     _disableInitializers();
     // }
@@ -43,15 +39,9 @@ contract TWTestToken is
     }
 
     // Optional: owner rescue function for accidentally sent ERC20s
-    function recoverERC20(
-        address token,
-        uint256 amount,
-        address to
-    ) external onlyOwner {
+    function recoverERC20(address token, uint256 amount, address to) external onlyOwner {
         require(token != address(this), "Cannot recover native TW tokens");
-        (bool success, ) = token.call(
-            abi.encodeWithSignature("transfer(address,uint256)", to, amount)
-        );
+        (bool success,) = token.call(abi.encodeWithSignature("transfer(address,uint256)", to, amount));
         require(success, "ERC20 recover failed");
     }
 }

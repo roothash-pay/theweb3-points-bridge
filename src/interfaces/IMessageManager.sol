@@ -27,6 +27,25 @@ interface IMessageManager {
     error ZeroAddressNotAllowed();
     error MessageAlreadySent(bytes32 messageHash);
 
-    function sendMessage(uint256 sourceChainId, uint256 destChainId, address sourceTokenAddress, address destTokenAddress, address _from, address _to, uint256 _value, uint256 _fee) external;
-    function claimMessage(uint256 sourceChainId, uint256 destChainId, address sourceTokenAddress, address destTokenAddress, address _from, address _to,  uint256 _value, uint256 _fee, uint256 _nonce) external;
+    function sendMessage(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address sourceTokenAddress,
+        address destTokenAddress,
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _fee
+    ) external;
+    function claimMessage(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address sourceTokenAddress,
+        address destTokenAddress,
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _fee,
+        uint256 _nonce
+    ) external;
 }

@@ -36,54 +36,33 @@ contract DeployerRootHashChainBridge is Script {
 
         emptyContract = new EmptyContract();
 
-        TransparentUpgradeableProxy proxyMessageManager = new TransparentUpgradeableProxy(
-                address(emptyContract),
-                rootHashChainMultiSign,
-                ""
-            );
+        TransparentUpgradeableProxy proxyMessageManager =
+            new TransparentUpgradeableProxy(address(emptyContract), rootHashChainMultiSign, "");
         messageManager = MessageManager(address(proxyMessageManager));
         messageManagerImplementation = new MessageManager();
-        messageManagerProxyAdmin = ProxyAdmin(
-            getProxyAdminAddress(address(proxyMessageManager))
-        );
+        messageManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyMessageManager)));
 
-        TransparentUpgradeableProxy proxyPoolManager = new TransparentUpgradeableProxy(
-                address(emptyContract),
-                rootHashChainMultiSign,
-                ""
-            );
+        TransparentUpgradeableProxy proxyPoolManager =
+            new TransparentUpgradeableProxy(address(emptyContract), rootHashChainMultiSign, "");
         poolManager = PoolManagerRootHash(payable(address(proxyPoolManager)));
         poolManagerImplementation = new PoolManagerRootHash();
-        poolManagerProxyAdmin = ProxyAdmin(
-            getProxyAdminAddress(address(proxyPoolManager))
-        );
+        poolManagerProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyPoolManager)));
 
         messageManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(messageManager)),
             address(messageManagerImplementation),
-            abi.encodeWithSelector(
-                MessageManager.initialize.selector,
-                relayerAddress,
-                poolManager
-            )
+            abi.encodeWithSelector(MessageManager.initialize.selector, relayerAddress, poolManager)
         );
 
         poolManagerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(poolManager)),
             address(poolManagerImplementation),
             abi.encodeWithSelector(
-                PoolManagerRootHash.initialize.selector,
-                relayerAddress,
-                messageManager,
-                relayerAddress,
-                relayerAddress
+                PoolManagerRootHash.initialize.selector, relayerAddress, messageManager, relayerAddress, relayerAddress
             )
         );
 
-        console.log(
-            "deploy proxyMessageManager:",
-            address(proxyMessageManager)
-        );
+        console.log("deploy proxyMessageManager:", address(proxyMessageManager));
         console.log("deploy proxyPoolManager:", address(proxyPoolManager));
         // string memory path = "deployed_addresses.json";
         // string memory data = string(abi.encodePacked(
@@ -94,9 +73,7 @@ contract DeployerRootHashChainBridge is Script {
         // vm.stopBroadcast();
     }
 
-    function getProxyAdminAddress(
-        address proxy
-    ) internal view returns (address) {
+    function getProxyAdminAddress(address proxy) internal view returns (address) {
         address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
         Vm vm = Vm(CHEATCODE_ADDRESS);
 

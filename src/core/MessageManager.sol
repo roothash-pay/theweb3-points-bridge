@@ -7,20 +7,12 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./MessageManagerStorage.sol";
 
-contract MessageManager is
-    Initializable,
-    ReentrancyGuardUpgradeable,
-    OwnableUpgradeable,
-    MessageManagerStorage
-{
+contract MessageManager is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable, MessageManagerStorage {
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(
-        address initialOwner,
-        address _poolManagerAddress
-    ) public initializer {
+    function initialize(address initialOwner, address _poolManagerAddress) public initializer {
         poolManagerAddress = _poolManagerAddress;
         nextMessageNumber = 1;
         __ReentrancyGuard_init();
@@ -28,10 +20,7 @@ contract MessageManager is
     }
 
     modifier onlyTokenBridge() {
-        require(
-            msg.sender == poolManagerAddress,
-            "MessageManager: only token bridge can do this operate"
-        );
+        require(msg.sender == poolManagerAddress, "MessageManager: only token bridge can do this operate");
         _;
     }
 
@@ -96,28 +85,13 @@ contract MessageManager is
         // Generate message hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                sourceChainId,
-                destChainId,
-                sourceTokenAddress,
-                destTokenAddress,
-                _from,
-                _to,
-                _fee,
-                _value,
-                _nonce
+                sourceChainId, destChainId, sourceTokenAddress, destTokenAddress, _from, _to, _fee, _value, _nonce
             )
         );
 
         // Ensure the message wont't be claimed again
         require(!cliamMessageStatus[messageHash], "Message not found!");
         cliamMessageStatus[messageHash] = true;
-        emit MessageClaimed(
-            sourceChainId,
-            destChainId,
-            sourceTokenAddress,
-            destTokenAddress,
-            messageHash,
-            _nonce
-        );
+        emit MessageClaimed(sourceChainId, destChainId, sourceTokenAddress, destTokenAddress, messageHash, _nonce);
     }
 }

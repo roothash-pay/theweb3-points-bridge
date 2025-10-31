@@ -43,49 +43,29 @@ contract DeployerRootHashChainToken is Script {
 
         emptyContract = new EmptyContract();
 
-        TransparentUpgradeableProxy proxyTWToken = new TransparentUpgradeableProxy(
-                address(emptyContract),
-                rootHashChainMultiSign,
-                ""
-            );
+        TransparentUpgradeableProxy proxyTWToken =
+            new TransparentUpgradeableProxy(address(emptyContract), rootHashChainMultiSign, "");
         tWToken = TWToken(address(proxyTWToken));
         tWTokenImplementation = new TWToken();
-        tWTokenProxyAdmin = ProxyAdmin(
-            getProxyAdminAddress(address(proxyTWToken))
-        );
+        tWTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyTWToken)));
 
-        TransparentUpgradeableProxy proxyDAIToken = new TransparentUpgradeableProxy(
-                address(emptyContract),
-                rootHashChainMultiSign,
-                ""
-            );
+        TransparentUpgradeableProxy proxyDAIToken =
+            new TransparentUpgradeableProxy(address(emptyContract), rootHashChainMultiSign, "");
         daiToken = DAIToken(address(proxyDAIToken));
         daiTokenImplementation = new DAIToken();
-        daiTokenProxyAdmin = ProxyAdmin(
-            getProxyAdminAddress(address(proxyDAIToken))
-        );
+        daiTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyDAIToken)));
 
-        TransparentUpgradeableProxy proxyUSDTToken = new TransparentUpgradeableProxy(
-                address(emptyContract),
-                rootHashChainMultiSign,
-                ""
-            );
+        TransparentUpgradeableProxy proxyUSDTToken =
+            new TransparentUpgradeableProxy(address(emptyContract), rootHashChainMultiSign, "");
         usdtToken = USDTToken(address(proxyUSDTToken));
         usdtTokenImplementation = new USDTToken();
-        usdtTokenProxyAdmin = ProxyAdmin(
-            getProxyAdminAddress(address(proxyUSDTToken))
-        );
+        usdtTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyUSDTToken)));
 
-        TransparentUpgradeableProxy proxyUSDCToken = new TransparentUpgradeableProxy(
-                address(emptyContract),
-                rootHashChainMultiSign,
-                ""
-            );
+        TransparentUpgradeableProxy proxyUSDCToken =
+            new TransparentUpgradeableProxy(address(emptyContract), rootHashChainMultiSign, "");
         usdcToken = USDCToken(address(proxyUSDCToken));
         usdcTokenImplementation = new USDCToken();
-        usdcTokenProxyAdmin = ProxyAdmin(
-            getProxyAdminAddress(address(proxyUSDCToken))
-        );
+        usdcTokenProxyAdmin = ProxyAdmin(getProxyAdminAddress(address(proxyUSDCToken)));
 
         // =========upgrade=============
         tWTokenProxyAdmin.upgradeAndCall(
@@ -121,9 +101,7 @@ contract DeployerRootHashChainToken is Script {
         console.log("deploy USDTToken:", address(usdtToken));
     }
 
-    function getProxyAdminAddress(
-        address proxy
-    ) internal view returns (address) {
+    function getProxyAdminAddress(address proxy) internal view returns (address) {
         address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
         Vm vm = Vm(CHEATCODE_ADDRESS);
 
