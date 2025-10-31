@@ -75,10 +75,10 @@ contract DeployerOpChainBridge is Script {
         );
 
         console.log(
-            "deploy OP-proxyMessageManager:",
+            "deploy proxyMessageManager:",
             address(proxyMessageManager)
         );
-        console.log("deploy OP-proxyPoolManager:", address(proxyPoolManager));
+        console.log("deploy proxyPoolManager:", address(proxyPoolManager));
         // string memory path = "deployed_addresses.json";
         // string memory data = string(abi.encodePacked(
         //     '{"proxyMessageManager": "', vm.toString(address(proxyMessageManager)), '", ',

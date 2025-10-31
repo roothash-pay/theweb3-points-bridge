@@ -39,4 +39,11 @@ abstract contract PoolManagerStorage is IPoolManager {
     mapping(address => uint256) public BridgeNativeTokenTimeStamp;
     mapping(address => uint256) public BridgeERC20TokenTimeStamp;
     mapping(address => uint256) public PerFee;
+
+    address public nftFeeToken;
+    mapping(address => uint256) public collectionBridgeFee; // nft collection => bridge fee
+    uint256 public NFTBridgeBaseFee; // base fee for nft bridge
+    mapping(address => uint256) public NFTFeePool; // fee pool for nft bridge
+
+    uint256[50] private __gap;
 }

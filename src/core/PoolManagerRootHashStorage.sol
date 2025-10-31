@@ -41,4 +41,11 @@ abstract contract PoolManagerRootHashStorage is IPoolManager {
 
     mapping(address => uint256) public PerFee;
     mapping(address => uint256) public TokenUSDTExchangeRate; // token => how many token for 1 USDT
+
+    address public nftFeeToken;
+    mapping(address => uint256) public collectionBridgeFee; // nft collection => bridge fee
+    uint256 public NFTBridgeBaseFee; // base fee for nft bridge
+    mapping(address => uint256) public NFTFeePool; // fee pool for nft bridge
+
+    uint256[50] private __gap;
 }

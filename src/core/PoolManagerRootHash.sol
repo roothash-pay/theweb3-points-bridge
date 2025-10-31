@@ -7,10 +7,16 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 
 import "../interfaces/IPoolManager.sol";
 import "../interfaces/IWrappedERC20.sol";
 import "./PoolManagerRootHashStorage.sol";
+
+interface IWrappedERC721 {
+    function mint(address to, uint256 tokenId) external;
+}
 
 contract PoolManagerRootHash is
     Initializable,
@@ -542,6 +548,257 @@ contract PoolManagerRootHash is
         return true;
     }
 
+    // ==================== NFT Management Functions ====================
+    function BridgeInitiateLocalNFT(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address localCollection,
+        address remoteCollection,
+        uint256 tokenId,
+        address to
+    ) external whenNotPaused nonReentrant returns (bool) {
+        if (sourceChainId != block.chainid) {
+            revert sourceChainIdError();
+        }
+        if (!IsSupportChainId(destChainId)) {
+            revert ChainIdIsNotSupported(destChainId);
+        }
+
+        uint256 feeAmount = collectionBridgeFee[localCollection] == 0
+            ? NFTBridgeBaseFee
+            : collectionBridgeFee[localCollection];
+        require(feeAmount >= NFTBridgeBaseFee, "Fee too low");
+
+        IERC20(nftFeeToken).safeTransferFrom(
+            msg.sender,
+            address(this),
+            feeAmount
+        );
+
+        NFTFeePool[nftFeeToken] += feeAmount;
+
+        IERC721(localCollection).safeTransferFrom(
+            msg.sender,
+            address(this),
+            tokenId
+        );
+
+        messageManager.sendMessage(
+            sourceChainId,
+            destChainId,
+            localCollection,
+            remoteCollection,
+            msg.sender,
+            to,
+            tokenId,
+            feeAmount
+        );
+
+        emit InitiateLocalNFT(
+            sourceChainId,
+            destChainId,
+            localCollection,
+            remoteCollection,
+            msg.sender,
+            to,
+            tokenId,
+            feeAmount
+        );
+        return true;
+    }
+
+    function BridgeInitiateMirrorNFT(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address sourceCollection,
+        address remoteCollection,
+        uint256 tokenId,
+        address to
+    ) external whenNotPaused nonReentrant returns (bool) {
+        if (sourceChainId != block.chainid) {
+            revert sourceChainIdError();
+        }
+        if (!IsSupportChainId(destChainId)) {
+            revert ChainIdIsNotSupported(destChainId);
+        }
+        uint256 feeAmount = collectionBridgeFee[sourceCollection] == 0
+            ? NFTBridgeBaseFee
+            : collectionBridgeFee[sourceCollection];
+
+        require(feeAmount >= NFTBridgeBaseFee, "Fee too low");
+        IERC20(nftFeeToken).safeTransferFrom(
+            msg.sender,
+            address(this),
+            feeAmount
+        );
+        NFTFeePool[nftFeeToken] += feeAmount;
+
+        IERC721(sourceCollection).safeTransferFrom(
+            msg.sender,
+            address(this),
+            tokenId
+        );
+        // 燃烧掉镜像NFT
+        ERC721Burnable(sourceCollection).burn(tokenId);
+
+        messageManager.sendMessage(
+            sourceChainId,
+            destChainId,
+            sourceCollection,
+            remoteCollection,
+            msg.sender,
+            to,
+            tokenId,
+            feeAmount
+        );
+
+        emit InitiateMirrorNFT(
+            sourceChainId,
+            destChainId,
+            sourceCollection,
+            remoteCollection,
+            msg.sender,
+            to,
+            tokenId,
+            feeAmount
+        );
+        return true;
+    }
+
+    function BridgeFinalizeMirrorNFT(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address sourceCollection,
+        address remoteCollection,
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 feeAmount,
+        uint256 nonce
+    ) external whenNotPaused onlyReLayer returns (bool) {
+        // 校验目标链
+        if (destChainId != block.chainid) {
+            revert sourceChainIdError();
+        }
+        if (!IsSupportChainId(sourceChainId)) {
+            revert ChainIdIsNotSupported(sourceChainId);
+        }
+
+        //  mint 新的 mirror NFT
+        IWrappedERC721(remoteCollection).mint(to, tokenId);
+
+        // ✅ 记录消息已消费
+        messageManager.claimMessage(
+            sourceChainId,
+            destChainId,
+            sourceCollection,
+            remoteCollection,
+            from,
+            to,
+            tokenId,
+            feeAmount,
+            nonce
+        );
+
+        emit FinalizeMirrorNFT(
+            sourceChainId,
+            destChainId,
+            sourceCollection,
+            remoteCollection,
+            from,
+            to,
+            tokenId
+        );
+
+        return true;
+    }
+
+    function BridgeFinalizeLocalNFT(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address localCollection,
+        address remoteCollection,
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 feeAmount,
+        uint256 nonce
+    ) external whenNotPaused onlyReLayer returns (bool) {
+        if (destChainId != block.chainid) {
+            revert sourceChainIdError();
+        }
+        if (!IsSupportChainId(sourceChainId)) {
+            revert ChainIdIsNotSupported(sourceChainId);
+        }
+
+        bool minted = false;
+
+        //  检查这个NFT是否已经在桥合约中存在（之前锁过）
+        try IERC721(localCollection).ownerOf(tokenId) returns (address owner) {
+            if (owner == address(this)) {
+                // 桥合约持有，直接转给用户
+                IERC721(localCollection).safeTransferFrom(
+                    address(this),
+                    to,
+                    tokenId
+                );
+            } else {
+                // 桥合约没持有（可能是首次跨链），需要 mint 出来
+                IWrappedERC721(localCollection).mint(to, tokenId);
+                minted = true;
+            }
+        } catch {
+            // 没有这个 tokenId（ownerOf revert），说明还没 mint，直接 mint
+            IWrappedERC721(localCollection).mint(to, tokenId);
+            minted = true;
+        }
+
+        messageManager.claimMessage(
+            sourceChainId,
+            destChainId,
+            localCollection,
+            remoteCollection,
+            from,
+            to,
+            tokenId,
+            feeAmount,
+            nonce
+        );
+
+        emit FinalizeLocalNFT(
+            sourceChainId,
+            destChainId,
+            localCollection,
+            remoteCollection,
+            from,
+            to,
+            tokenId
+        );
+
+        return true;
+    }
+
+    function setNFTBridgeBaseFee(
+        uint256 _NFTBridgeBaseFee
+    ) external onlyReLayer {
+        NFTBridgeBaseFee = _NFTBridgeBaseFee;
+        emit SetNFTBridgeBaseFee(_NFTBridgeBaseFee);
+    }
+
+    function setNftFeeToken(address feeToken) external onlyReLayer {
+        nftFeeToken = feeToken;
+        emit SetSupportFeeToken(feeToken);
+    }
+
+    function setCollectionBridgeFee(
+        address collection,
+        uint256 feeAmount
+    ) external onlyReLayer {
+        collectionBridgeFee[collection] = feeAmount;
+        emit SetCollectionBridgeFee(collection, feeAmount);
+    }
+
+    // ==================== Admin Functions ====================
     function setMinTransferAmount(
         uint256 _MinTransferAmount
     ) external onlyReLayer {

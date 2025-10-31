@@ -127,6 +127,48 @@ interface IPoolManager {
     event SetMinTransferAmount(uint256 _MinTransferAmount);
     event SetMaxTransferAmount(uint256 _MaxTransferAmount, bool isERC20);
 
+    event SetNFTBridgeBaseFee(uint256 _NFTBridgeBaseFee);
+    event SetSupportFeeToken(address token);
+    event SetCollectionBridgeFee(address collection, uint256 fee);
+    event InitiateLocalNFT(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address localCollection,
+        address remoteCollection,
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 feeAmount
+    );
+    event InitiateMirrorNFT(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address sourceCollection,
+        address remoteCollection,
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 feeAmount
+    );
+    event FinalizeMirrorNFT(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address sourceCollection,
+        address remoteCollection,
+        address from,
+        address to,
+        uint256 tokenId
+    );
+    event FinalizeLocalNFT(
+        uint256 sourceChainId,
+        uint256 destChainId,
+        address sourceCollection,
+        address remoteCollection,
+        address from,
+        address to,
+        uint256 tokenId
+    );
+
     error NoReward();
 
     error NewPoolIsNotCreate(uint256 PoolIndex);
