@@ -26,7 +26,10 @@ contract PoolManager is
     using SafeERC20 for IERC20;
 
     modifier onlyReLayer() {
-        require(msg.sender == address(relayerAddress), "TreasureManager:onlyReLayer only relayer call this function");
+        require(
+            msg.sender == address(relayerAddress),
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
         _;
     }
 
@@ -69,23 +72,31 @@ contract PoolManager is
     }
 
     // Deposit native token or erc20 token to bridge
-    function depositNativeTokenToBridge() public payable whenNotPaused nonReentrant returns (bool) {
+    function depositNativeTokenToBridge()
+        public
+        payable
+        whenNotPaused
+        nonReentrant
+        returns (bool)
+    {
         FundingPoolBalance[NativeTokenAddress] += msg.value;
         emit DepositToken(NativeTokenAddress, msg.sender, msg.value);
         return true;
     }
 
     // Deposit erc20 token to bridge
-    function depositErc20ToBridge(address tokenAddress, uint256 amount)
-        public
-        whenNotPaused
-        nonReentrant
-        returns (bool)
-    {
+    function depositErc20ToBridge(
+        address tokenAddress,
+        uint256 amount
+    ) public whenNotPaused nonReentrant returns (bool) {
         if (!IsSupportToken[tokenAddress]) {
             revert TokenIsNotSupported(tokenAddress);
         }
-        IERC20(tokenAddress).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(tokenAddress).safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
         FundingPoolBalance[tokenAddress] += amount;
         emit DepositToken(tokenAddress, msg.sender, amount);
         return true;
@@ -93,33 +104,34 @@ contract PoolManager is
 
     // Withdraw native token token from bridge
     // only withdrawManager can call this function
-    function withdrawNativeTokenFromBridge(address payable withdrawAddress, uint256 amount)
-        public
-        payable
-        whenNotPaused
-        onlyWithdrawManager
-        returns (bool)
-    {
+    function withdrawNativeTokenFromBridge(
+        address payable withdrawAddress,
+        uint256 amount
+    ) public payable whenNotPaused onlyWithdrawManager returns (bool) {
         require(
             address(this).balance >= amount,
             "PoolManager withdrawNativeTokenFromBridge: insufficient NativeToken balance in contract"
         );
         FundingPoolBalance[NativeTokenAddress] -= amount;
-        (bool success,) = withdrawAddress.call{value: amount}("");
+        (bool success, ) = withdrawAddress.call{value: amount}("");
         if (!success) {
             return false;
         }
-        emit WithdrawToken(NativeTokenAddress, msg.sender, withdrawAddress, amount);
+        emit WithdrawToken(
+            NativeTokenAddress,
+            msg.sender,
+            withdrawAddress,
+            amount
+        );
         return true;
     }
 
     // Withdraw erc20 token from bridge
-    function withdrawErc20FromBridge(address tokenAddress, address withdrawAddress, uint256 amount)
-        public
-        whenNotPaused
-        onlyWithdrawManager
-        returns (bool)
-    {
+    function withdrawErc20FromBridge(
+        address tokenAddress,
+        address withdrawAddress,
+        uint256 amount
+    ) public whenNotPaused onlyWithdrawManager returns (bool) {
         require(
             FundingPoolBalance[tokenAddress] >= amount,
             "PoolManager withdrawNativeTokenFromBridge: Insufficient token balance in contract"
@@ -131,12 +143,11 @@ contract PoolManager is
     }
 
     // Withdraw Fee Value token from bridge
-    function withdrawFeeValue(address tokenAddress, address withdrawAddress, uint256 amount)
-        public
-        whenNotPaused
-        onlyWithdrawManager
-        returns (bool)
-    {
+    function withdrawFeeValue(
+        address tokenAddress,
+        address withdrawAddress,
+        uint256 amount
+    ) public whenNotPaused onlyWithdrawManager returns (bool) {
         require(
             FeePoolValue[tokenAddress] >= amount,
             "PoolManager withdrawNativeTokenFromBridge: Insufficient token balance in contract"
@@ -145,7 +156,7 @@ contract PoolManager is
         if (tokenAddress != NativeTokenAddress) {
             IERC20(tokenAddress).safeTransfer(withdrawAddress, amount);
         } else {
-            (bool success,) = payable(withdrawAddress).call{value: amount}("");
+            (bool success, ) = payable(withdrawAddress).call{value: amount}("");
             require(success == true, "native token withdraw failed");
         }
         return true;
@@ -177,7 +188,10 @@ contract PoolManager is
         }
 
         if (msg.value > MaxPointsTransferAmount) {
-            revert MoreThanMaxTransferAmount(MaxPointsTransferAmount, msg.value);
+            revert MoreThanMaxTransferAmount(
+                MaxPointsTransferAmount,
+                msg.value
+            );
         }
 
         FundingPoolBalance[NativeTokenAddress] += msg.value;
@@ -188,10 +202,24 @@ contract PoolManager is
         FeePoolValue[NativeTokenAddress] += fee;
 
         messageManager.sendMessage(
-            block.chainid, destChainId, NativeTokenAddress, destTokenAddress, msg.sender, to, amount, fee
+            block.chainid,
+            destChainId,
+            NativeTokenAddress,
+            destTokenAddress,
+            msg.sender,
+            to,
+            amount,
+            fee
         );
 
-        emit InitiateNativeToken(sourceChainId, destChainId, destTokenAddress, msg.sender, to, amount);
+        emit InitiateNativeToken(
+            sourceChainId,
+            destChainId,
+            destTokenAddress,
+            msg.sender,
+            to,
+            amount
+        );
 
         return true;
     }
@@ -229,9 +257,17 @@ contract PoolManager is
             revert MoreThanMaxTransferAmount(MaxERC20TransferAmount, value);
         }
 
-        uint256 BalanceBefore = IERC20(sourceTokenAddress).balanceOf(address(this));
-        IERC20(sourceTokenAddress).safeTransferFrom(msg.sender, address(this), value);
-        uint256 BalanceAfter = IERC20(sourceTokenAddress).balanceOf(address(this));
+        uint256 BalanceBefore = IERC20(sourceTokenAddress).balanceOf(
+            address(this)
+        );
+        IERC20(sourceTokenAddress).safeTransferFrom(
+            msg.sender,
+            address(this),
+            value
+        );
+        uint256 BalanceAfter = IERC20(sourceTokenAddress).balanceOf(
+            address(this)
+        );
 
         uint256 amount = BalanceAfter - BalanceBefore;
         FundingPoolBalance[sourceTokenAddress] += value;
@@ -243,10 +279,25 @@ contract PoolManager is
         FeePoolValue[sourceTokenAddress] += fee;
 
         messageManager.sendMessage(
-            sourceChainId, destChainId, sourceTokenAddress, destTokenAddress, msg.sender, to, amount, fee
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            destTokenAddress,
+            msg.sender,
+            to,
+            amount,
+            fee
         );
 
-        emit InitiateERC20(sourceChainId, destChainId, sourceTokenAddress, destTokenAddress, msg.sender, to, amount);
+        emit InitiateERC20(
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            destTokenAddress,
+            msg.sender,
+            to,
+            amount
+        );
 
         return true;
     }
@@ -271,7 +322,7 @@ contract PoolManager is
         }
 
         // send native token to user
-        (bool _ret,) = payable(to).call{value: amount}("");
+        (bool _ret, ) = payable(to).call{value: amount}("");
         if (!_ret) {
             revert TransferNativeTokenFailed();
         }
@@ -279,10 +330,25 @@ contract PoolManager is
         FundingPoolBalance[NativeTokenAddress] -= amount;
 
         messageManager.claimMessage(
-            sourceChainId, destChainId, sourceTokenAddress, NativeTokenAddress, from, to, amount, _fee, _nonce
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            NativeTokenAddress,
+            from,
+            to,
+            amount,
+            _fee,
+            _nonce
         );
 
-        emit FinalizeNativeToken(sourceChainId, destChainId, sourceTokenAddress, address(this), to, amount);
+        emit FinalizeNativeToken(
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            address(this),
+            to,
+            amount
+        );
 
         return true;
     }
@@ -323,16 +389,32 @@ contract PoolManager is
         FundingPoolBalance[destTokenAddress] -= amount;
 
         messageManager.claimMessage(
-            sourceChainId, destChainId, sourceTokenAddress, destTokenAddress, from, to, amount, _fee, _nonce
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            destTokenAddress,
+            from,
+            to,
+            amount,
+            _fee,
+            _nonce
         );
 
-        emit FinalizeERC20(sourceChainId, destChainId, sourceTokenAddress, destTokenAddress, address(this), to, amount);
+        emit FinalizeERC20(
+            sourceChainId,
+            destChainId,
+            sourceTokenAddress,
+            destTokenAddress,
+            address(this),
+            to,
+            amount
+        );
 
         return true;
     }
 
     // ==================== NFT Management Functions ====================
-    // 在别的链上，只能跨我们自己部署的 NFT 合约
+    // 在非RootHash的链之间，只能跨RootHash官方部署的 NFT 合约
     function BridgeInitiateLocalNFT(
         uint256 sourceChainId,
         uint256 destChainId,
@@ -348,22 +430,45 @@ contract PoolManager is
             revert ChainIdIsNotSupported(destChainId);
         }
 
-        uint256 feeAmount =
-            collectionBridgeFee[localCollection] == 0 ? NFTBridgeBaseFee : collectionBridgeFee[localCollection];
+        uint256 feeAmount = collectionBridgeFee[localCollection] == 0
+            ? NFTBridgeBaseFee
+            : collectionBridgeFee[localCollection];
         require(feeAmount >= NFTBridgeBaseFee, "Fee too low");
 
-        IERC20(nftFeeToken).safeTransferFrom(msg.sender, address(this), feeAmount);
+        IERC20(nftFeeToken).safeTransferFrom(
+            msg.sender,
+            address(this),
+            feeAmount
+        );
 
         NFTFeePool[nftFeeToken] += feeAmount;
 
-        IERC721(localCollection).safeTransferFrom(msg.sender, address(this), tokenId);
+        IERC721(localCollection).safeTransferFrom(
+            msg.sender,
+            address(this),
+            tokenId
+        );
 
         messageManager.sendMessage(
-            sourceChainId, destChainId, localCollection, remoteCollection, msg.sender, to, tokenId, feeAmount
+            sourceChainId,
+            destChainId,
+            localCollection,
+            remoteCollection,
+            msg.sender,
+            to,
+            tokenId,
+            feeAmount
         );
 
         emit InitiateLocalNFT(
-            sourceChainId, destChainId, localCollection, remoteCollection, msg.sender, to, tokenId, feeAmount
+            sourceChainId,
+            destChainId,
+            localCollection,
+            remoteCollection,
+            msg.sender,
+            to,
+            tokenId,
+            feeAmount
         );
         return true;
     }
@@ -392,7 +497,11 @@ contract PoolManager is
         try IERC721(localCollection).ownerOf(tokenId) returns (address owner) {
             if (owner == address(this)) {
                 // 桥合约持有，直接转给用户
-                IERC721(localCollection).safeTransferFrom(address(this), to, tokenId);
+                IERC721(localCollection).safeTransferFrom(
+                    address(this),
+                    to,
+                    tokenId
+                );
             } else {
                 // 桥合约没持有（可能是首次跨链），需要 mint 出来
                 IWrappedERC721(localCollection).mint(to, tokenId);
@@ -405,15 +514,33 @@ contract PoolManager is
         }
 
         messageManager.claimMessage(
-            sourceChainId, destChainId, localCollection, remoteCollection, from, to, tokenId, feeAmount, nonce
+            sourceChainId,
+            destChainId,
+            localCollection,
+            remoteCollection,
+            from,
+            to,
+            tokenId,
+            feeAmount,
+            nonce
         );
 
-        emit FinalizeLocalNFT(sourceChainId, destChainId, localCollection, remoteCollection, from, to, tokenId);
+        emit FinalizeLocalNFT(
+            sourceChainId,
+            destChainId,
+            localCollection,
+            remoteCollection,
+            from,
+            to,
+            tokenId
+        );
 
         return true;
     }
 
-    function setNFTBridgeBaseFee(uint256 _NFTBridgeBaseFee) external onlyReLayer {
+    function setNFTBridgeBaseFee(
+        uint256 _NFTBridgeBaseFee
+    ) external onlyReLayer {
         NFTBridgeBaseFee = _NFTBridgeBaseFee;
         emit SetNFTBridgeBaseFee(_NFTBridgeBaseFee);
     }
@@ -423,18 +550,26 @@ contract PoolManager is
         emit SetSupportFeeToken(feeToken);
     }
 
-    function setCollectionBridgeFee(address collection, uint256 feeAmount) external onlyReLayer {
+    function setCollectionBridgeFee(
+        address collection,
+        uint256 feeAmount
+    ) external onlyReLayer {
         collectionBridgeFee[collection] = feeAmount;
         emit SetCollectionBridgeFee(collection, feeAmount);
     }
 
     // ==================== Admin Functions ====================
-    function setMinTransferAmount(uint256 _MinTransferAmount) external onlyReLayer {
+    function setMinTransferAmount(
+        uint256 _MinTransferAmount
+    ) external onlyReLayer {
         MinTransferAmount = _MinTransferAmount;
         emit SetMinTransferAmount(_MinTransferAmount);
     }
 
-    function setMaxTransferAmount(uint256 _MaxTransferAmount, bool isERC20) external onlyReLayer {
+    function setMaxTransferAmount(
+        uint256 _MaxTransferAmount,
+        bool isERC20
+    ) external onlyReLayer {
         if (isERC20) {
             MaxERC20TransferAmount = _MaxTransferAmount;
         } else {
@@ -443,12 +578,18 @@ contract PoolManager is
         emit SetMaxTransferAmount(_MaxTransferAmount, isERC20);
     }
 
-    function setValidChainId(uint256 chainId, bool isValid) external onlyReLayer {
+    function setValidChainId(
+        uint256 chainId,
+        bool isValid
+    ) external onlyReLayer {
         IsSupportedChainId[chainId] = isValid;
         emit SetValidChainId(chainId, isValid);
     }
 
-    function setSupportERC20Token(address ERC20Address, bool isValid) external onlyReLayer {
+    function setSupportERC20Token(
+        address ERC20Address,
+        bool isValid
+    ) external onlyReLayer {
         IsSupportToken[ERC20Address] = isValid;
         if (isValid) {
             SupportTokens.push(ERC20Address);
@@ -456,7 +597,10 @@ contract PoolManager is
         emit SetSupportTokenEvent(ERC20Address, isValid, block.chainid);
     }
 
-    function setPerFee(uint256 _PerFee, address _tokenAddress) external onlyReLayer {
+    function setPerFee(
+        uint256 _PerFee,
+        address _tokenAddress
+    ) external onlyReLayer {
         require(_PerFee < 1_000_000);
         PerFee[_tokenAddress] = _PerFee;
         emit SetPerFee(_PerFee, _tokenAddress);
@@ -473,11 +617,19 @@ contract PoolManager is
     /***************************************
      ***** Other function *****
      ***************************************/
-    function QuickSendAssertToUser(address _token, address to, uint256 _amount) external onlyWithdrawManager {
+    function QuickSendAssertToUser(
+        address _token,
+        address to,
+        uint256 _amount
+    ) external onlyWithdrawManager {
         SendAssertToUser(_token, to, _amount);
     }
 
-    function SendAssertToUser(address _token, address to, uint256 _amount) internal returns (bool) {
+    function SendAssertToUser(
+        address _token,
+        address to,
+        uint256 _amount
+    ) internal returns (bool) {
         if (!IsSupportToken[_token]) {
             revert TokenIsNotSupported(_token);
         }
@@ -488,7 +640,7 @@ contract PoolManager is
             if (address(this).balance < _amount) {
                 revert NotEnoughNativeToken();
             }
-            (bool _ret,) = payable(to).call{value: _amount}("");
+            (bool _ret, ) = payable(to).call{value: _amount}("");
             if (!_ret) {
                 revert TransferNativeTokenFailed();
             }
@@ -503,5 +655,14 @@ contract PoolManager is
 
     function IsSupportChainId(uint256 chainId) internal view returns (bool) {
         return IsSupportedChainId[chainId];
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public virtual returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }

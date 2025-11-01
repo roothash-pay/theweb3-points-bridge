@@ -7,6 +7,7 @@ import {MessageManager} from "../src/core/MessageManager.sol";
 import {mockToken} from "../script/utils/mockERC20.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../src/interfaces/IPoolManager.sol";
+import {SimpleTestNFT} from "./token/nftDemo.sol";
 
 contract PoolManagerTest is Test {
     PoolManager public sourcePoolManager;
@@ -15,7 +16,8 @@ contract PoolManagerTest is Test {
     MessageManager public destMessageManager;
 
     mockToken public erc20Token;
-    address public constant NativeTokenAddress = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address public constant NativeTokenAddress =
+        address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     uint256 constant SOURCE_CHAIN_ID = 1;
     uint256 constant DEST_CHAIN_ID = 10;
@@ -28,6 +30,10 @@ contract PoolManagerTest is Test {
 
     address admin;
     address ReLayer;
+
+    SimpleTestNFT nftCollection;
+    SimpleTestNFT mirrorNft;
+    SimpleTestNFT fakeMirrorNft;
 
     function setUp() public {
         admin = makeAddr("admin");
@@ -42,22 +48,48 @@ contract PoolManagerTest is Test {
         erc20Token = new mockToken("CAT", "CAT");
 
         vm.startPrank(admin);
-        TransparentUpgradeableProxy sourcePoolManagerProxy =
-            new TransparentUpgradeableProxy(address(poolManagerLogic), admin, "");
-        TransparentUpgradeableProxy sourceMessageManagerProxy =
-            new TransparentUpgradeableProxy(address(messageManagerLogic), admin, "");
-        TransparentUpgradeableProxy destPoolManagerProxy =
-            new TransparentUpgradeableProxy(address(poolManagerLogic), admin, "");
-        TransparentUpgradeableProxy destMessageManagerProxy =
-            new TransparentUpgradeableProxy(address(messageManagerLogic), admin, "");
+        TransparentUpgradeableProxy sourcePoolManagerProxy = new TransparentUpgradeableProxy(
+                address(poolManagerLogic),
+                admin,
+                ""
+            );
+        TransparentUpgradeableProxy sourceMessageManagerProxy = new TransparentUpgradeableProxy(
+                address(messageManagerLogic),
+                admin,
+                ""
+            );
+        TransparentUpgradeableProxy destPoolManagerProxy = new TransparentUpgradeableProxy(
+                address(poolManagerLogic),
+                admin,
+                ""
+            );
+        TransparentUpgradeableProxy destMessageManagerProxy = new TransparentUpgradeableProxy(
+                address(messageManagerLogic),
+                admin,
+                ""
+            );
 
-        sourcePoolManager = PoolManager(payable(address(sourcePoolManagerProxy)));
+        sourcePoolManager = PoolManager(
+            payable(address(sourcePoolManagerProxy))
+        );
         destPoolManager = PoolManager(payable(address(destPoolManagerProxy)));
-        sourceMessageManager = MessageManager(address(sourceMessageManagerProxy));
+        sourceMessageManager = MessageManager(
+            address(sourceMessageManagerProxy)
+        );
         destMessageManager = MessageManager(address(destMessageManagerProxy));
 
-        sourcePoolManager.initialize(admin, address(sourceMessageManager), ReLayer, admin);
-        destPoolManager.initialize(admin, address(destMessageManager), ReLayer, admin);
+        sourcePoolManager.initialize(
+            admin,
+            address(sourceMessageManager),
+            ReLayer,
+            admin
+        );
+        destPoolManager.initialize(
+            admin,
+            address(destMessageManager),
+            ReLayer,
+            admin
+        );
         sourceMessageManager.initialize(admin, address(sourcePoolManager));
         destMessageManager.initialize(admin, address(destPoolManager));
         vm.stopPrank();
@@ -65,8 +97,14 @@ contract PoolManagerTest is Test {
         vm.startPrank(ReLayer);
         sourcePoolManager.setValidChainId(DEST_CHAIN_ID, true);
         destPoolManager.setValidChainId(SOURCE_CHAIN_ID, true);
-        sourcePoolManager.setPerFee(3000, address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)); // 0.3%
-        destPoolManager.setPerFee(3000, address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)); // 0.3%
+        sourcePoolManager.setPerFee(
+            3000,
+            address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
+        ); // 0.3%
+        destPoolManager.setPerFee(
+            3000,
+            address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
+        ); // 0.3%
         sourcePoolManager.setSupportERC20Token(address(erc20Token), true);
         destPoolManager.setSupportERC20Token(address(erc20Token), true);
         sourcePoolManager.setSupportERC20Token(NativeTokenAddress, true);
@@ -86,6 +124,22 @@ contract PoolManagerTest is Test {
         sourcePoolManager.depositErc20ToBridge(address(erc20Token), 200 ether); // 起始erc20储备200 e18
         destPoolManager.depositErc20ToBridge(address(erc20Token), 200 ether);
         vm.stopPrank();
+
+        nftCollection = new SimpleTestNFT(
+            "LocalNFT",
+            "LNFT",
+            address(sourcePoolManager)
+        );
+        mirrorNft = new SimpleTestNFT(
+            "MirrorNFT",
+            "MNFT",
+            address(sourcePoolManager)
+        );
+        fakeMirrorNft = new SimpleTestNFT(
+            "FakeMirrorNFT",
+            "FMNFT",
+            address(sourcePoolManager)
+        );
     }
 
     // Test bridging ETH from source to destination chain
@@ -107,14 +161,22 @@ contract PoolManagerTest is Test {
         uint256 bridgeAmount = amount * 1 ether;
         vm.deal(from, bridgeAmount);
 
-        address ethTokenAddress = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-        uint256 balanceBefore = sourcePoolManager.FundingPoolBalance(ethTokenAddress);
-        uint256 nextMessageNumberBefore = sourceMessageManager.nextMessageNumber();
+        address ethTokenAddress = address(
+            0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+        );
+        uint256 balanceBefore = sourcePoolManager.FundingPoolBalance(
+            ethTokenAddress
+        );
+        uint256 nextMessageNumberBefore = sourceMessageManager
+            .nextMessageNumber();
 
         vm.chainId(SOURCE_CHAIN_ID);
         vm.prank(from);
         sourcePoolManager.BridgeInitiateNativeToken{value: bridgeAmount}(
-            SOURCE_CHAIN_ID, DEST_CHAIN_ID, ethTokenAddress, seek
+            SOURCE_CHAIN_ID,
+            DEST_CHAIN_ID,
+            ethTokenAddress,
+            seek
         );
 
         assertEq(
@@ -147,21 +209,32 @@ contract PoolManagerTest is Test {
             )
         );
 
-        assertTrue(sourceMessageManager.sentMessageStatus(messageHash), "Message hash should be marked as sent");
+        assertTrue(
+            sourceMessageManager.sentMessageStatus(messageHash),
+            "Message hash should be marked as sent"
+        );
     }
 
     function _bridge_ERC20(uint256 amount, address from, address to) internal {
         uint256 bridgeAmount = amount * 1 ether;
         erc20Token.mint(from, bridgeAmount);
 
-        uint256 balanceBefore = sourcePoolManager.FundingPoolBalance(address(erc20Token));
-        uint256 nextMessageNumberBefore = sourceMessageManager.nextMessageNumber();
+        uint256 balanceBefore = sourcePoolManager.FundingPoolBalance(
+            address(erc20Token)
+        );
+        uint256 nextMessageNumberBefore = sourceMessageManager
+            .nextMessageNumber();
 
         vm.chainId(SOURCE_CHAIN_ID);
         vm.startPrank(from);
         erc20Token.approve(address(sourcePoolManager), bridgeAmount);
         sourcePoolManager.BridgeInitiateERC20(
-            SOURCE_CHAIN_ID, DEST_CHAIN_ID, to, address(erc20Token), address(erc20Token), bridgeAmount
+            SOURCE_CHAIN_ID,
+            DEST_CHAIN_ID,
+            to,
+            address(erc20Token),
+            address(erc20Token),
+            bridgeAmount
         );
         vm.stopPrank();
 
@@ -207,7 +280,9 @@ contract PoolManagerTest is Test {
     }
 
     function test_Revert_Bridge_Unsupported_Token() public {
-        address unsupportedToken = address(0x1234567890123456789012345678901234567890);
+        address unsupportedToken = address(
+            0x1234567890123456789012345678901234567890
+        );
         vm.startPrank(ReLayer);
         sourcePoolManager.setSupportERC20Token(unsupportedToken, false);
         vm.stopPrank();
@@ -226,7 +301,12 @@ contract PoolManagerTest is Test {
             )
         );
         sourcePoolManager.BridgeInitiateERC20(
-            SOURCE_CHAIN_ID, DEST_CHAIN_ID, seek, unsupportedToken, unsupportedToken, bridgeAmount
+            SOURCE_CHAIN_ID,
+            DEST_CHAIN_ID,
+            seek,
+            unsupportedToken,
+            unsupportedToken,
+            bridgeAmount
         );
         vm.stopPrank();
     }
@@ -240,8 +320,14 @@ contract PoolManagerTest is Test {
         destPoolManager.depositNativeTokenToBridge{value: 100 ether}();
         assertEq(address(sourcePoolManager).balance, 200 ether);
         assertEq(address(destPoolManager).balance, 200 ether);
-        assertEq(sourcePoolManager.FundingPoolBalance(NativeTokenAddress), 600 ether);
-        assertEq(destPoolManager.FundingPoolBalance(NativeTokenAddress), 600 ether);
+        assertEq(
+            sourcePoolManager.FundingPoolBalance(NativeTokenAddress),
+            600 ether
+        );
+        assertEq(
+            destPoolManager.FundingPoolBalance(NativeTokenAddress),
+            600 ether
+        );
     }
 
     function test_depositErc20ToBridge() public {
@@ -253,32 +339,62 @@ contract PoolManagerTest is Test {
         destPoolManager.depositErc20ToBridge(address(erc20Token), 100 ether);
         assertEq(erc20Token.balanceOf(address(sourcePoolManager)), 400 ether);
         assertEq(erc20Token.balanceOf(address(destPoolManager)), 400 ether);
-        assertEq(sourcePoolManager.FundingPoolBalance(address(erc20Token)), 300 ether);
-        assertEq(destPoolManager.FundingPoolBalance(address(erc20Token)), 300 ether);
+        assertEq(
+            sourcePoolManager.FundingPoolBalance(address(erc20Token)),
+            300 ether
+        );
+        assertEq(
+            destPoolManager.FundingPoolBalance(address(erc20Token)),
+            300 ether
+        );
     }
 
     function test_withdrawNativeTokenFromBridge() public {
         uint256 beforeBalance = admin.balance;
         vm.prank(admin);
-        sourcePoolManager.withdrawNativeTokenFromBridge(payable(admin), 100 ether);
+        sourcePoolManager.withdrawNativeTokenFromBridge(
+            payable(admin),
+            100 ether
+        );
         assertEq(admin.balance, beforeBalance + 100 ether);
-        assertEq(sourcePoolManager.FundingPoolBalance(NativeTokenAddress), 400 ether);
+        assertEq(
+            sourcePoolManager.FundingPoolBalance(NativeTokenAddress),
+            400 ether
+        );
 
         vm.prank(cat);
-        vm.expectRevert("TreasureManager:onlyWithdrawManager only withdraw manager can call this function");
-        sourcePoolManager.withdrawNativeTokenFromBridge(payable(cat), 100 ether);
+        vm.expectRevert(
+            "TreasureManager:onlyWithdrawManager only withdraw manager can call this function"
+        );
+        sourcePoolManager.withdrawNativeTokenFromBridge(
+            payable(cat),
+            100 ether
+        );
     }
 
     function test_withdrawErc20FromBridge() public {
         uint256 beforeBalance = erc20Token.balanceOf(admin);
         vm.prank(admin);
-        sourcePoolManager.withdrawErc20FromBridge(address(erc20Token), admin, 100 ether);
+        sourcePoolManager.withdrawErc20FromBridge(
+            address(erc20Token),
+            admin,
+            100 ether
+        );
         assertEq(erc20Token.balanceOf(admin), beforeBalance + 100 ether);
-        assertEq(sourcePoolManager.FundingPoolBalance(address(erc20Token)), 100 ether);
+        assertEq(
+            sourcePoolManager.FundingPoolBalance(address(erc20Token)),
+            100 ether
+        );
 
         vm.prank(cat);
-        vm.expectRevert("TreasureManager:onlyWithdrawManager only withdraw manager can call this function");
-        sourcePoolManager.withdrawErc20FromBridge(address(erc20Token), cat, 100);
+        vm.expectRevert(
+            "TreasureManager:onlyWithdrawManager only withdraw manager can call this function"
+        );
+        sourcePoolManager.withdrawErc20FromBridge(
+            address(erc20Token),
+            cat,
+            100
+        );
     }
 
     function test_setMinandMaxTransferAmount() public {
@@ -286,7 +402,9 @@ contract PoolManagerTest is Test {
         sourcePoolManager.setMinTransferAmount(1 ether);
         assertEq(sourcePoolManager.MinTransferAmount(), 1 ether);
 
-        vm.expectRevert("TreasureManager:onlyReLayer only relayer call this function");
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
         vm.prank(cat);
         sourcePoolManager.setMinTransferAmount(2 ether);
     }
@@ -300,7 +418,9 @@ contract PoolManagerTest is Test {
         vm.stopPrank();
 
         vm.prank(cat);
-        vm.expectRevert("TreasureManager:onlyReLayer only relayer call this function");
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
         sourcePoolManager.setMaxTransferAmount(2000 ether, true);
     }
 
@@ -309,7 +429,9 @@ contract PoolManagerTest is Test {
         sourcePoolManager.setValidChainId(999, true);
         assertTrue(sourcePoolManager.IsSupportedChainId(999));
 
-        vm.expectRevert("TreasureManager:onlyReLayer only relayer call this function");
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
         vm.prank(cat);
         sourcePoolManager.setValidChainId(998, true);
     }
@@ -321,7 +443,9 @@ contract PoolManagerTest is Test {
         assertTrue(sourcePoolManager.IsSupportToken(newToken));
         assertEq(sourcePoolManager.SupportTokens(2), newToken);
 
-        vm.expectRevert("TreasureManager:onlyReLayer only relayer call this function");
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
         vm.prank(cat);
         sourcePoolManager.setSupportERC20Token(newToken, false);
     }
@@ -331,7 +455,9 @@ contract PoolManagerTest is Test {
         sourcePoolManager.setPerFee(5000, address(erc20Token));
         assertEq(sourcePoolManager.PerFee(address(erc20Token)), 5000);
 
-        vm.expectRevert("TreasureManager:onlyReLayer only relayer call this function");
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
         vm.prank(cat);
         sourcePoolManager.setPerFee(6000, address(erc20Token));
     }
@@ -345,7 +471,10 @@ contract PoolManagerTest is Test {
         vm.expectRevert();
         vm.prank(cat);
         sourcePoolManager.BridgeInitiateNativeToken{value: 1 ether}(
-            SOURCE_CHAIN_ID, DEST_CHAIN_ID, NativeTokenAddress, seek
+            SOURCE_CHAIN_ID,
+            DEST_CHAIN_ID,
+            NativeTokenAddress,
+            seek
         );
 
         vm.prank(admin);
@@ -354,22 +483,42 @@ contract PoolManagerTest is Test {
 
         vm.prank(cat);
         sourcePoolManager.BridgeInitiateNativeToken{value: 1 ether}(
-            SOURCE_CHAIN_ID, DEST_CHAIN_ID, NativeTokenAddress, seek
+            SOURCE_CHAIN_ID,
+            DEST_CHAIN_ID,
+            NativeTokenAddress,
+            seek
         );
-        assertEq(sourcePoolManager.FundingPoolBalance(NativeTokenAddress), 501 ether);
+        assertEq(
+            sourcePoolManager.FundingPoolBalance(NativeTokenAddress),
+            501 ether
+        );
     }
 
     function test_QuickSendAssertToUser() public {
         vm.prank(admin);
-        sourcePoolManager.QuickSendAssertToUser(address(erc20Token), seek, 100 ether);
-        assertTrue(erc20Token.balanceOf(address(sourcePoolManager)) == 100 ether);
+        sourcePoolManager.QuickSendAssertToUser(
+            address(erc20Token),
+            seek,
+            100 ether
+        );
+        assertTrue(
+            erc20Token.balanceOf(address(sourcePoolManager)) == 100 ether
+        );
         assertTrue(erc20Token.balanceOf(seek) == 100 ether);
 
-        vm.expectRevert("TreasureManager:onlyWithdrawManager only withdraw manager can call this function");
+        vm.expectRevert(
+            "TreasureManager:onlyWithdrawManager only withdraw manager can call this function"
+        );
         vm.prank(cat);
-        sourcePoolManager.QuickSendAssertToUser(address(erc20Token), cat, 100 ether);
+        sourcePoolManager.QuickSendAssertToUser(
+            address(erc20Token),
+            cat,
+            100 ether
+        );
 
-        address unsupportedToken = address(0x1234567890123456789012345678901234567890);
+        address unsupportedToken = address(
+            0x1234567890123456789012345678901234567890
+        );
         vm.expectRevert(
             abi.encodeWithSelector(
                 IPoolManager.TokenIsNotSupported.selector, // 注意这里是 `.selector`
@@ -377,14 +526,26 @@ contract PoolManagerTest is Test {
             )
         );
         vm.prank(admin);
-        sourcePoolManager.QuickSendAssertToUser(unsupportedToken, cat, 100 ether);
+        sourcePoolManager.QuickSendAssertToUser(
+            unsupportedToken,
+            cat,
+            100 ether
+        );
 
         vm.expectRevert("Not enough balance");
         vm.prank(admin);
-        sourcePoolManager.QuickSendAssertToUser(address(erc20Token), cat, 10000 ether);
+        sourcePoolManager.QuickSendAssertToUser(
+            address(erc20Token),
+            cat,
+            10000 ether
+        );
 
         vm.prank(admin);
-        sourcePoolManager.QuickSendAssertToUser(NativeTokenAddress, seek, 1 ether);
+        sourcePoolManager.QuickSendAssertToUser(
+            NativeTokenAddress,
+            seek,
+            1 ether
+        );
         assertTrue(seek.balance == 1 ether);
     }
 
@@ -396,7 +557,14 @@ contract PoolManagerTest is Test {
         vm.chainId(DEST_CHAIN_ID);
         vm.startPrank(ReLayer);
         destPoolManager.BridgeFinalizeNativeToken(
-            SOURCE_CHAIN_ID, DEST_CHAIN_ID, NativeTokenAddress, cat, seek, amount, 0, 1
+            SOURCE_CHAIN_ID,
+            DEST_CHAIN_ID,
+            NativeTokenAddress,
+            cat,
+            seek,
+            amount,
+            0,
+            1
         );
         vm.stopPrank();
 
@@ -411,11 +579,23 @@ contract PoolManagerTest is Test {
         vm.chainId(DEST_CHAIN_ID);
         vm.startPrank(ReLayer);
         destPoolManager.BridgeFinalizeERC20(
-            SOURCE_CHAIN_ID, DEST_CHAIN_ID, cat, seek, address(erc20Token), address(erc20Token), amount, 0, 1
+            SOURCE_CHAIN_ID,
+            DEST_CHAIN_ID,
+            cat,
+            seek,
+            address(erc20Token),
+            address(erc20Token),
+            amount,
+            0,
+            1
         );
         vm.stopPrank();
 
-        assertEq(erc20Token.balanceOf(seek), amount, "Receiver should get bridged ERC20 tokens");
+        assertEq(
+            erc20Token.balanceOf(seek),
+            amount,
+            "Receiver should get bridged ERC20 tokens"
+        );
     }
 
     // ========== 5️⃣ Test unauthorized finalize revert ==========
@@ -423,9 +603,18 @@ contract PoolManagerTest is Test {
         uint256 amount = 5 ether;
         vm.deal(address(destPoolManager), amount);
 
-        vm.expectRevert("TreasureManager:onlyReLayer only relayer call this function");
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
         destPoolManager.BridgeFinalizeNativeToken(
-            SOURCE_CHAIN_ID, DEST_CHAIN_ID, NativeTokenAddress, cat, seek, amount, 0, 1
+            SOURCE_CHAIN_ID,
+            DEST_CHAIN_ID,
+            NativeTokenAddress,
+            cat,
+            seek,
+            amount,
+            0,
+            1
         );
     }
 
@@ -437,7 +626,10 @@ contract PoolManagerTest is Test {
         uint256 beforeBalance = admin.balance;
 
         vm.prank(admin);
-        sourcePoolManager.withdrawNativeTokenFromBridge(payable(admin), depositAmount);
+        sourcePoolManager.withdrawNativeTokenFromBridge(
+            payable(admin),
+            depositAmount
+        );
 
         assertEq(admin.balance, beforeBalance + depositAmount);
     }
@@ -465,12 +657,339 @@ contract PoolManagerTest is Test {
         vm.expectRevert();
         vm.prank(cat);
         sourcePoolManager.BridgeInitiateNativeToken{value: 0.01 ether}(
-            SOURCE_CHAIN_ID, DEST_CHAIN_ID, NativeTokenAddress, seek
+            SOURCE_CHAIN_ID,
+            DEST_CHAIN_ID,
+            NativeTokenAddress,
+            seek
         );
     }
 
     function test_IsSupportChainId() public view {
         assertTrue(sourcePoolManager.IsSupportedChainId(DEST_CHAIN_ID));
         assertFalse(sourcePoolManager.IsSupportedChainId(999));
+    }
+
+    function test_BridgeInitiateLocalNFT_AllPaths() public {
+        uint256 tokenId = 700;
+        uint256 baseFee = 1 ether;
+        uint256 customFee = 1.5 ether;
+
+        // ========== 准备阶段 ==========
+        vm.startPrank(ReLayer);
+        sourcePoolManager.setValidChainId(2222, true); // 支持目标链
+        sourcePoolManager.setNftFeeToken(address(erc20Token));
+        sourcePoolManager.setNFTBridgeBaseFee(baseFee);
+        sourcePoolManager.setCollectionBridgeFee(
+            address(nftCollection),
+            customFee
+        );
+        vm.stopPrank();
+
+        // mint NFT 给 cat
+        vm.prank(address(sourcePoolManager));
+        nftCollection.mint(cat, tokenId);
+
+        vm.startPrank(cat);
+        nftCollection.approve(address(sourcePoolManager), tokenId);
+
+        // 给 cat 足够手续费 Token
+        erc20Token.approve(address(sourcePoolManager), 10 ether);
+        uint256 beforeBalance = erc20Token.balanceOf(cat);
+
+        // ========== ✅ 正常路径 ==========
+        sourcePoolManager.BridgeInitiateLocalNFT(
+            block.chainid,
+            2222,
+            address(nftCollection),
+            address(fakeMirrorNft),
+            tokenId,
+            seek
+        );
+
+        // ✅ 检查 NFT 被锁入桥合约
+        assertEq(nftCollection.ownerOf(tokenId), address(sourcePoolManager));
+
+        // ✅ 检查手续费被正确扣除
+        assertEq(erc20Token.balanceOf(cat), beforeBalance - customFee);
+
+        // ✅ 检查 fee 池更新
+        assertEq(sourcePoolManager.NFTFeePool(address(erc20Token)), customFee);
+
+        vm.stopPrank();
+
+        // ========== ❌ 测试1：sourceChainId 错误 ==========
+        vm.prank(address(sourcePoolManager));
+        nftCollection.mint(cat, 701);
+        vm.startPrank(cat);
+        nftCollection.approve(address(sourcePoolManager), 701);
+        erc20Token.approve(address(sourcePoolManager), 10 ether);
+        vm.expectRevert(); // sourceChainIdError()
+        sourcePoolManager.BridgeInitiateLocalNFT(
+            9999, // 错误源链
+            2222,
+            address(nftCollection),
+            address(fakeMirrorNft),
+            701,
+            seek
+        );
+        vm.stopPrank();
+
+        // ========== ❌ 测试2：destChainId 不支持 ==========
+        vm.prank(address(sourcePoolManager));
+        nftCollection.mint(cat, 702);
+        vm.startPrank(cat);
+        nftCollection.approve(address(sourcePoolManager), 702);
+        erc20Token.approve(address(sourcePoolManager), 10 ether);
+        vm.expectRevert(); // ChainIdIsNotSupported()
+        sourcePoolManager.BridgeInitiateLocalNFT(
+            block.chainid,
+            3333, // 未设置支持
+            address(nftCollection),
+            address(fakeMirrorNft),
+            702,
+            seek
+        );
+        vm.stopPrank();
+
+        // ========== ✅ 测试3：collectionBridgeFee 为 0 → fallback 到 baseFee ==========
+        vm.startPrank(ReLayer);
+        sourcePoolManager.setCollectionBridgeFee(address(nftCollection), 0);
+        vm.stopPrank();
+
+        vm.prank(address(sourcePoolManager));
+        nftCollection.mint(cat, 703);
+        vm.startPrank(cat);
+        nftCollection.approve(address(sourcePoolManager), 703);
+        erc20Token.approve(address(sourcePoolManager), 10 ether);
+        uint256 beforeBalance2 = erc20Token.balanceOf(cat);
+
+        sourcePoolManager.BridgeInitiateLocalNFT(
+            block.chainid,
+            2222,
+            address(nftCollection),
+            address(fakeMirrorNft),
+            703,
+            seek
+        );
+
+        assertEq(erc20Token.balanceOf(cat), beforeBalance2 - baseFee);
+        assertEq(
+            sourcePoolManager.NFTFeePool(address(erc20Token)),
+            customFee + baseFee
+        );
+        vm.stopPrank();
+
+        // ========== ❌ 测试4：手续费代币余额不足 ==========
+        vm.prank(address(sourcePoolManager));
+        nftCollection.mint(bridge_cat, 704);
+        vm.startPrank(bridge_cat);
+        nftCollection.approve(address(sourcePoolManager), 704);
+
+        vm.expectRevert(); // safeTransferFrom revert
+        sourcePoolManager.BridgeInitiateLocalNFT(
+            block.chainid,
+            2222,
+            address(nftCollection),
+            address(fakeMirrorNft),
+            704,
+            seek
+        );
+        vm.stopPrank();
+
+        // ========== ❌ 测试5：手续费过低（人为设置更低的 collectionFee） ==========
+        vm.startPrank(ReLayer);
+        sourcePoolManager.setNFTBridgeBaseFee(1 ether);
+        sourcePoolManager.setCollectionBridgeFee(
+            address(nftCollection),
+            0.5 ether
+        );
+        vm.stopPrank();
+
+        vm.prank(address(sourcePoolManager));
+        nftCollection.mint(cat, 705);
+        vm.startPrank(cat);
+        nftCollection.approve(address(sourcePoolManager), 705);
+        erc20Token.approve(address(sourcePoolManager), 10 ether);
+        vm.expectRevert("Fee too low");
+        sourcePoolManager.BridgeInitiateLocalNFT(
+            block.chainid,
+            2222,
+            address(nftCollection),
+            address(fakeMirrorNft),
+            705,
+            seek
+        );
+        vm.stopPrank();
+    }
+
+    function test_BridgeFinalizeLocalNFT_AllPaths() public {
+        uint256 tokenId = 800;
+        uint256 feeAmount = 1 ether;
+        uint256 nonce = 1;
+
+        // ========== 准备阶段 ==========
+        vm.startPrank(ReLayer);
+        sourcePoolManager.setValidChainId(11155111, true); // 支持源链（假设是 Sepolia）
+        vm.stopPrank();
+
+        // ========== ✅ 场景1：桥合约已经持有 NFT ==========
+        // 桥合约作为 owner 持有 NFT
+        vm.prank(address(sourcePoolManager));
+        nftCollection.mint(address(sourcePoolManager), tokenId);
+        assertEq(nftCollection.ownerOf(tokenId), address(sourcePoolManager));
+
+        vm.prank(ReLayer);
+        sourcePoolManager.BridgeFinalizeLocalNFT(
+            11155111,
+            block.chainid,
+            address(nftCollection),
+            address(fakeMirrorNft),
+            cat,
+            seek,
+            tokenId,
+            feeAmount,
+            nonce
+        );
+
+        // ✅ 用户成功获得 NFT
+        assertEq(nftCollection.ownerOf(tokenId), seek);
+
+        // ========== ✅ 场景2：桥合约没有该 NFT（首次跨链） ==========
+        uint256 tokenId2 = 801;
+        vm.prank(ReLayer);
+        sourcePoolManager.BridgeFinalizeLocalNFT(
+            11155111,
+            block.chainid,
+            address(fakeMirrorNft), // Wrapped collection
+            address(nftCollection),
+            cat,
+            seek,
+            tokenId2,
+            feeAmount,
+            nonce + 1
+        );
+
+        // ✅ 新 NFT 被 mint 出来
+        assertEq(fakeMirrorNft.ownerOf(tokenId2), seek);
+
+        // ========== ✅ 场景3：ownerOf revert（NFT尚未存在） ==========
+        uint256 tokenId3 = 802;
+        vm.prank(ReLayer);
+        sourcePoolManager.BridgeFinalizeLocalNFT(
+            11155111,
+            block.chainid,
+            address(fakeMirrorNft),
+            address(nftCollection),
+            cat,
+            seek,
+            tokenId3,
+            feeAmount,
+            nonce + 2
+        );
+
+        // ✅ 新 NFT 被 mint 出来（即便 ownerOf revert）
+        assertEq(fakeMirrorNft.ownerOf(tokenId3), seek);
+
+        // ========== ❌ 测试1：destChainId 错误 ==========
+        vm.prank(ReLayer);
+        vm.expectRevert(); // sourceChainIdError()
+        sourcePoolManager.BridgeFinalizeLocalNFT(
+            11155111,
+            9999, // 错误目标链
+            address(nftCollection),
+            address(fakeMirrorNft),
+            cat,
+            seek,
+            900,
+            feeAmount,
+            nonce + 3
+        );
+
+        // ========== ❌ 测试2：sourceChainId 不被支持 ==========
+        vm.startPrank(ReLayer);
+        sourcePoolManager.setValidChainId(11155111, false);
+        vm.stopPrank();
+
+        vm.prank(ReLayer);
+        vm.expectRevert(); // ChainIdIsNotSupported()
+        sourcePoolManager.BridgeFinalizeLocalNFT(
+            11155111,
+            block.chainid,
+            address(nftCollection),
+            address(fakeMirrorNft),
+            cat,
+            seek,
+            901,
+            feeAmount,
+            nonce + 4
+        );
+
+        // ========== ❌ 测试3：非 relayer 调用 ==========
+        vm.startPrank(ReLayer);
+        sourcePoolManager.setValidChainId(11155111, true);
+        vm.stopPrank();
+
+        vm.prank(cat);
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
+        sourcePoolManager.BridgeFinalizeLocalNFT(
+            11155111,
+            block.chainid,
+            address(nftCollection),
+            address(fakeMirrorNft),
+            cat,
+            seek,
+            902,
+            feeAmount,
+            nonce + 5
+        );
+    }
+
+    function test_SetNFTBridgeFeeFunctions_AllPaths() public {
+        address testToken = address(erc20Token);
+        address testCollection = address(nftCollection);
+
+        // ========== ✅ 测试1：ReLayer 正常调用 ==========
+        vm.startPrank(ReLayer);
+
+        // 1️⃣ setNFTBridgeBaseFee
+
+        sourcePoolManager.setNFTBridgeBaseFee(2 ether);
+        assertEq(sourcePoolManager.NFTBridgeBaseFee(), 2 ether);
+
+        // 2️⃣ setNftFeeToken
+
+        sourcePoolManager.setNftFeeToken(testToken);
+        assertEq(sourcePoolManager.nftFeeToken(), testToken);
+
+        // 3️⃣ setCollectionBridgeFee
+
+        sourcePoolManager.setCollectionBridgeFee(testCollection, 3 ether);
+        assertEq(
+            sourcePoolManager.collectionBridgeFee(testCollection),
+            3 ether
+        );
+
+        vm.stopPrank();
+
+        // ========== ❌ 测试2：非 ReLayer 调用应 revert ==========
+        vm.prank(cat);
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
+        sourcePoolManager.setNFTBridgeBaseFee(5 ether);
+
+        vm.prank(cat);
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
+        sourcePoolManager.setNftFeeToken(address(erc20Token));
+
+        vm.prank(cat);
+        vm.expectRevert(
+            "TreasureManager:onlyReLayer only relayer call this function"
+        );
+        sourcePoolManager.setCollectionBridgeFee(testCollection, 1 ether);
     }
 }
