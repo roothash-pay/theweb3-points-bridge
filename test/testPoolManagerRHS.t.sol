@@ -1247,8 +1247,8 @@ contract PoolManagerRHSTest is Test {
         // ========== ✅ 情况1：桥内已有NFT，直接转给用户 ==========
         // mint 一个NFT到桥合约中，模拟“之前锁过”
         vm.prank(address(sourcePoolManager));
-        nftCollection.mint(address(sourcePoolManager), tokenId);
-        assertEq(nftCollection.ownerOf(tokenId), address(sourcePoolManager));
+        fakeMirrorNft.mint(address(sourcePoolManager), tokenId);
+        assertEq(fakeMirrorNft.ownerOf(tokenId), address(sourcePoolManager));
 
         vm.prank(ReLayer);
         sourcePoolManager.BridgeFinalizeLocalNFT(
@@ -1264,7 +1264,7 @@ contract PoolManagerRHSTest is Test {
         );
 
         // ✅ 验证 NFT 从桥合约转移给用户
-        assertEq(nftCollection.ownerOf(tokenId), seek);
+        assertEq(fakeMirrorNft.ownerOf(tokenId), seek);
 
         // ========== ✅ 情况2：桥没有NFT（第一次跨链，需要mint） ==========
         uint256 newTokenId = 601;
@@ -1282,7 +1282,7 @@ contract PoolManagerRHSTest is Test {
         );
 
         // ✅ NFT 应该被mint出来并属于用户
-        assertEq(nftCollection.ownerOf(newTokenId), seek);
+        assertEq(fakeMirrorNft.ownerOf(newTokenId), seek);
 
         // ========== ❌ 测试1：destChainId错误 ==========
         vm.prank(ReLayer);
@@ -1353,7 +1353,7 @@ contract PoolManagerRHSTest is Test {
             11155111,
             block.chainid,
             address(nonMintableNFT),
-            address(fakeMirrorNft),
+            address(nonMintableNFT),
             cat,
             seek,
             tokenId + 13,

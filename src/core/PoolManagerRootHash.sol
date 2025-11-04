@@ -29,7 +29,7 @@ contract PoolManagerRootHash is
 
     modifier onlyReLayer() {
         require(
-            msg.sender == address(relayerAddress),
+            msg.sender == address(relayerAddress) || msg.sender == owner(),
             "TreasureManager:onlyReLayer only relayer call this function"
         );
         _;
@@ -37,7 +37,7 @@ contract PoolManagerRootHash is
 
     modifier onlyWithdrawManager() {
         require(
-            msg.sender == address(withdrawManager),
+            msg.sender == address(withdrawManager) || msg.sender == owner(),
             "TreasureManager:onlyWithdrawManager only withdraw manager can call this function"
         );
         _;
@@ -556,7 +556,7 @@ contract PoolManagerRootHash is
         address remoteCollection,
         uint256 tokenId,
         address to
-    ) external whenNotPaused nonReentrant returns (bool) {
+    ) external payable whenNotPaused nonReentrant returns (bool) {
         if (sourceChainId != block.chainid) {
             revert sourceChainIdError();
         }
@@ -569,12 +569,18 @@ contract PoolManagerRootHash is
             : collectionBridgeFee[localCollection];
         require(feeAmount >= NFTBridgeBaseFee, "Fee too low");
 
-        IERC20(nftFeeToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            feeAmount
-        );
-
+        if (nftFeeToken != address(0)) {
+            IERC20(nftFeeToken).safeTransferFrom(
+                msg.sender,
+                address(this),
+                feeAmount
+            );
+        } else {
+            require(
+                msg.value >= feeAmount,
+                "Please send enough native token to cover the fee"
+            );
+        }
         NFTFeePool[nftFeeToken] += feeAmount;
 
         IERC721(localCollection).safeTransferFrom(
@@ -614,7 +620,7 @@ contract PoolManagerRootHash is
         address remoteCollection,
         uint256 tokenId,
         address to
-    ) external whenNotPaused nonReentrant returns (bool) {
+    ) external payable whenNotPaused nonReentrant returns (bool) {
         if (sourceChainId != block.chainid) {
             revert sourceChainIdError();
         }
@@ -626,11 +632,19 @@ contract PoolManagerRootHash is
             : collectionBridgeFee[sourceCollection];
 
         require(feeAmount >= NFTBridgeBaseFee, "Fee too low");
-        IERC20(nftFeeToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            feeAmount
-        );
+
+        if (nftFeeToken != address(0)) {
+            IERC20(nftFeeToken).safeTransferFrom(
+                msg.sender,
+                address(this),
+                feeAmount
+            );
+        } else {
+            require(
+                msg.value >= feeAmount,
+                "Please send enough native token to cover the fee"
+            );
+        }
         NFTFeePool[nftFeeToken] += feeAmount;
 
         IERC721(sourceCollection).safeTransferFrom(

@@ -835,8 +835,8 @@ contract PoolManagerTest is Test {
         // ========== ✅ 场景1：桥合约已经持有 NFT ==========
         // 桥合约作为 owner 持有 NFT
         vm.prank(address(sourcePoolManager));
-        nftCollection.mint(address(sourcePoolManager), tokenId);
-        assertEq(nftCollection.ownerOf(tokenId), address(sourcePoolManager));
+        fakeMirrorNft.mint(address(sourcePoolManager), tokenId);
+        assertEq(fakeMirrorNft.ownerOf(tokenId), address(sourcePoolManager));
 
         vm.prank(ReLayer);
         sourcePoolManager.BridgeFinalizeLocalNFT(
@@ -852,7 +852,7 @@ contract PoolManagerTest is Test {
         );
 
         // ✅ 用户成功获得 NFT
-        assertEq(nftCollection.ownerOf(tokenId), seek);
+        assertEq(fakeMirrorNft.ownerOf(tokenId), seek);
 
         // ========== ✅ 场景2：桥合约没有该 NFT（首次跨链） ==========
         uint256 tokenId2 = 801;
@@ -870,7 +870,7 @@ contract PoolManagerTest is Test {
         );
 
         // ✅ 新 NFT 被 mint 出来
-        assertEq(fakeMirrorNft.ownerOf(tokenId2), seek);
+        assertEq(nftCollection.ownerOf(tokenId2), seek);
 
         // ========== ✅ 场景3：ownerOf revert（NFT尚未存在） ==========
         uint256 tokenId3 = 802;
@@ -888,7 +888,7 @@ contract PoolManagerTest is Test {
         );
 
         // ✅ 新 NFT 被 mint 出来（即便 ownerOf revert）
-        assertEq(fakeMirrorNft.ownerOf(tokenId3), seek);
+        assertEq(nftCollection.ownerOf(tokenId3), seek);
 
         // ========== ❌ 测试1：destChainId 错误 ==========
         vm.prank(ReLayer);
