@@ -734,22 +734,22 @@ contract PoolManagerRootHash is
         bool minted = false;
 
         //  检查这个NFT是否已经在桥合约中存在（之前锁过）
-        try IERC721(localCollection).ownerOf(tokenId) returns (address owner) {
+        try IERC721(remoteCollection).ownerOf(tokenId) returns (address owner) {
             if (owner == address(this)) {
                 // 桥合约持有，直接转给用户
-                IERC721(localCollection).safeTransferFrom(
+                IERC721(remoteCollection).safeTransferFrom(
                     address(this),
                     to,
                     tokenId
                 );
             } else {
                 // 桥合约没持有（可能是首次跨链），需要 mint 出来
-                IWrappedERC721(localCollection).mint(to, tokenId);
+                IWrappedERC721(remoteCollection).mint(to, tokenId);
                 minted = true;
             }
         } catch {
             // 没有这个 tokenId（ownerOf revert），说明还没 mint，直接 mint
-            IWrappedERC721(localCollection).mint(to, tokenId);
+            IWrappedERC721(remoteCollection).mint(to, tokenId);
             minted = true;
         }
 
